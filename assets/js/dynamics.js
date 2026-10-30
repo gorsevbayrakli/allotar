@@ -19,7 +19,7 @@ export async function initDynamics(root){
   const canvas = root.querySelector('canvas');
   const lbl = {open: root.querySelector('[data-l=open]'), closed: root.querySelector('[data-l=closed]'), ts: root.querySelector('[data-l=ts]')};
   const clock = root.querySelector('[data-clock]');
-  const S = createStage(canvas, {bloom: [.55, .6, .8], exposure: .9, fog: 0, fov: 30});
+  const S = createStage(canvas, {bloom: [.35, .55, .88], exposure: .85, fog: 0, fov: 30});
   const {scene, camera} = S;
   scene.add(new THREE.HemisphereLight(0xbcd0ff, 0x0a0f25, .35));
   const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(-4, 6, 8); scene.add(key);
@@ -53,7 +53,7 @@ export async function initDynamics(root){
   const atoms = makePoints(P.N, S.glow); group.add(atoms.points);
   const fx = makePoints(400, S.glow); scene.add(fx.points);
   const B = new Float32Array(P.N * 3);
-  const TEAL = lin('#19d3a8'), C_TEAL = hdr('#19d3a8', 3), C_ICE = hdr('#9cc0ff', 1.3), C_BALL = hdr('#ffd38a', 4), C_TRAIL = hdr('#ff9a62', 2.2);
+  const TEAL = lin('#19d3a8'), C_TEAL = hdr('#19d3a8', 3), C_ICE = hdr('#9cc0ff', .9), C_BALL = hdr('#ffd38a', 4), C_TRAIL = hdr('#ff9a62', 2.2);
   const trail = [];
 
   let mx = 0, tmx = 0, simMs = 0;
@@ -68,7 +68,7 @@ export async function initDynamics(root){
     atoms.n = 0;
     for (let i = 0; i < P.N; i++){
       const j = i*3, act = P.isAct[i];
-      atoms.push(B[j] * K, B[j+1] * K, B[j+2] * K, act ? C_TEAL : C_ICE, act ? .35 * closed : .05 + .05 * Math.sin(t * 3 + P.phase[i] * 3), act ? .14 : .05);
+      atoms.push(B[j] * K, B[j+1] * K, B[j+2] * K, act ? C_TEAL : C_ICE, act ? .25 * closed : .02 + .03 * Math.sin(t * 3 + P.phase[i] * 3), act ? .14 : .05);
     }
     atoms.flush();
 

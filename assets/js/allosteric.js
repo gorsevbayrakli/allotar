@@ -2,8 +2,8 @@
 // probe density vs proximity, and the allosteric profile along the sequence.
 import {animate, rng, clamp, ease} from './gl.js';
 
-const MONO = "500 10px 'JetBrains Mono', monospace";
-const C = {axis: 'rgba(160,180,255,.22)', grid: 'rgba(160,180,255,.06)', dim: '#7d88b3', ink: '#dfe6ff', blue: '#59a8ff', violet: '#a08cff', site: '#ff7a3a', teal: '#19d3a8'};
+const MONO = "700 10.5px 'Raleway', sans-serif";
+const C = {axis: 'rgba(255,255,255,.22)', grid: 'rgba(255,255,255,.06)', dim: '#a9b3dd', ink: '#ffffff', blue: '#6fa8ec', violet: '#b0a6e6', site: '#F2A37C', teal: '#0FAE8C'};
 const CYCLE = 12;
 
 export function initAllosteric(root){
@@ -46,8 +46,8 @@ export function initAllosteric(root){
     // A: conformational landscape
     const ax = pad, ay = top;
     panel(ax, ay, pw, ph, 'CONFORMATIONAL LANDSCAPE', 'PC1', 'PC2');
-    blob(ax + pw * .3, ay + ph * .68, pw * .32, 'rgba(89,168,255,A)', .16);
-    blob(ax + pw * .7, ay + ph * .32, pw * .3, 'rgba(160,140,255,A)', .16);
+    blob(ax + pw * .3, ay + ph * .68, pw * .32, 'rgba(79,143,217,A)', .16);
+    blob(ax + pw * .7, ay + ph * .32, pw * .3, 'rgba(154,143,214,A)', .16);
     ctx.font = MONO; ctx.fillStyle = C.dim; ctx.textAlign = 'center';
     ctx.fillText('inactive', ax + pw * .3, ay + ph * .97); ctx.fillText('active', ax + pw * .72, ay + 12);
     const reveal = ease(clamp(c * 4));
@@ -59,7 +59,7 @@ export function initAllosteric(root){
     // B: probe density vs proximity
     const bx = narrow ? pad : pad + pw + gap, by = narrow ? top + ph + 58 : top;
     panel(bx, by, pw, ph, 'PROBE DENSITY VS PROXIMITY', 'PROXIMITY', 'PERSISTENCE');
-    ctx.fillStyle = 'rgba(255,122,58,.08)'; ctx.fillRect(bx + pw * .55, by, pw * .45, ph * .45);
+    ctx.fillStyle = 'rgba(242,163,124,.1)'; ctx.fillRect(bx + pw * .55, by, pw * .45, ph * .45);
     ctx.fillStyle = 'rgba(89,168,255,.05)'; ctx.fillRect(bx, by, pw * .55, ph * .45);
     ctx.font = MONO; ctx.textAlign = 'center'; ctx.fillStyle = C.dim; ctx.fillText('persistent', bx + pw * .27, by + 14); ctx.fillStyle = C.site; ctx.fillText('allosteric', bx + pw * .78, by + 14);
     const reveal2 = ease(clamp(c * 4 - .6));
@@ -79,7 +79,7 @@ export function initAllosteric(root){
       ctx.stroke(); ctx.shadowBlur = 0; ctx.setLineDash([]);
     }
     SITES.forEach(s => { if (s > n) return; const x = cx + s / (NRES - 1) * cw, y = cy + (1 - f1[s]) * ch;
-      const g = ctx.createLinearGradient(0, cy, 0, cy + ch); g.addColorStop(0, 'rgba(255,122,58,.18)'); g.addColorStop(1, 'rgba(255,122,58,0)');
+      const g = ctx.createLinearGradient(0, cy, 0, cy + ch); g.addColorStop(0, 'rgba(242,163,124,.2)'); g.addColorStop(1, 'rgba(242,163,124,0)');
       ctx.fillStyle = g; ctx.fillRect(x - 6, cy, 12, ch); dot(x, y - 8, 4 + Math.sin(t * 3 + s), C.site, 18); });
 
     // legend

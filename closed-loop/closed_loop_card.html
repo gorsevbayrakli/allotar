@@ -71,9 +71,9 @@ canvas#gl{position:absolute;inset:0;width:100%;height:100%;display:block}
 
 /* dark theme */
 body{background:#03050b}
-html.embed body{padding:0;background:transparent;min-height:0}
+html.embed body{padding:0;background:#0d1538;min-height:0}
 html.embed .stage{width:100%}
-.card{--navy:#e3e9ff;--ink:#c9d3f5;--dim:#7d88b3;--line:rgba(160,180,255,.14);--pass:#59a8ff;--fail:#ff4d5e;--teal:#19d3a8;--site:#ff7a3a;background:#05070f}
+.card{--navy:#e3e9ff;--ink:#c9d3f5;--dim:#7d88b3;--line:rgba(160,180,255,.14);--pass:#59a8ff;--fail:#ff4d5e;--teal:#19d3a8;--site:#ff7a3a;background:#0d1538}
 .step{color:var(--dim);border-color:rgba(160,180,255,.16);background:rgba(10,14,30,.4)}
 .step.on{color:#0a0f22;background:#dfe8ff;border-color:#dfe8ff;box-shadow:0 0 18px rgba(160,190,255,.4)}
 .scen{background:rgba(10,14,30,.55);border-color:var(--line)}
@@ -228,8 +228,8 @@ const canvas = document.getElementById('gl');
 const renderer = new THREE.WebGLRenderer({canvas, antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: CAPTURE});
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .82;
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#05070f');
-scene.fog = new THREE.FogExp2('#05070f', .022);
+scene.background = new THREE.Color('#0d1538');
+scene.fog = new THREE.FogExp2('#0d1538', .022);
 const camera = new THREE.PerspectiveCamera(32, 1, .1, 300);
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), .04).texture;
@@ -245,7 +245,7 @@ const backdrop = new THREE.Mesh(new THREE.SphereGeometry(120, 32, 16), new THREE
   vertexShader: `varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
   fragmentShader: `varying vec3 vP; void main(){
     float glow = pow(max(dot(vP, normalize(vec3(.1, .05, -1.))), 0.), 6.);
-    vec3 c = mix(vec3(.003, .004, .01), vec3(.008, .012, .03), smoothstep(-.6, .6, vP.y)) + vec3(.012, .02, .06) * glow;
+    vec3 c = mix(vec3(.004, .007, .035), vec3(.01, .018, .07), smoothstep(-.6, .6, vP.y)) + vec3(.02, .035, .1) * glow;
     gl_FragColor = vec4(c, 1.); }`
 }));
 
@@ -272,12 +272,12 @@ function makePoints(n){
   return L;
 }
 const hdr = (hex, k = 1) => { const c = new THREE.Color(hex); return [c.r*k, c.g*k, c.b*k]; };
-const C = {ice: hdr('#9cc0ff', 1.4), site: hdr('#ff7a3a', 3), red: hdr('#ff3b4a', 3.2), teal: hdr('#19d3a8', 3), pass: hdr('#59a8ff', 3), gold: hdr('#ffb067', 3.5), dust: hdr('#9fb8ff', 1.1)};
+const C = {ice: hdr('#9cc0ff', .9), site: hdr('#ff7a3a', 3), red: hdr('#ff3b4a', 3.2), teal: hdr('#19d3a8', 3), pass: hdr('#59a8ff', 3), gold: hdr('#ffb067', 3.5), dust: hdr('#9fb8ff', 1.1)};
 
 // ---------- proteins: marching-cubes surfaces ----------
 const tgt = new THREE.Group(), off = new THREE.Group(); scene.add(tgt, off);
 const matT = new THREE.MeshPhysicalMaterial({vertexColors: true, roughness: .38, metalness: 0, clearcoat: .8, clearcoatRoughness: .2,
-  iridescence: .4, iridescenceIOR: 1.3, sheen: .25, sheenColor: new THREE.Color('#6f8fff'), sheenRoughness: .5, envMapIntensity: .7, transparent: true});
+  iridescence: .12, iridescenceIOR: 1.3, sheen: .25, sheenColor: new THREE.Color('#6f8fff'), sheenRoughness: .5, envMapIntensity: .7, transparent: true});
 const matO = new THREE.MeshPhysicalMaterial({vertexColors: true, roughness: .5, metalness: 0, clearcoat: 1, clearcoatRoughness: .25,
   sheen: .3, sheenColor: new THREE.Color('#8a92a8'), sheenRoughness: .5, envMapIntensity: .45, transparent: true, depthWrite: false});
 const narrow = innerWidth < 480;
@@ -354,7 +354,7 @@ const DUST = []; { const r = rng(3); for (let i = 0; i < 1100; i++) DUST.push([(
 // ---------- post-processing ----------
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), .5, .6, .92); 
+const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), .3, .55, .94); 
 const finish = new ShaderPass({
   uniforms: {tDiffuse: {value: null}, uTime: {value: 0}, uRes: {value: new THREE.Vector2(1, 1)}},
   vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
@@ -548,7 +548,7 @@ function update(t){
 
   // atom glow layers (also the assembly animation)
   for (const [L, B, isT] of [[atomsT, BT, true], [atomsO, BO, false]]){
-    L.n = 0; const twinkle = .07 + .6 * Math.sin(Math.PI * a);
+    L.n = 0; const twinkle = .03 + .5 * Math.sin(Math.PI * a);
     for (let i = 0; i < N; i++){
       const j = i*3, dx = B[j] - CC.x, dy = B[j+1] - CC.y, dz = B[j+2] - CC.z, dl = Math.hypot(dx, dy, dz) || 1, push = RAD[i] * 1.15 / dl;
       const x = B[j] + dx*push, y = B[j+1] + dy*push, z = B[j+2] + dz*push;

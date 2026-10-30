@@ -7,7 +7,7 @@ const R = 2.2, PERIOD = 3.2;
 
 export function initEngine(root){
   const canvas = root.querySelector('canvas'), nodes = [...root.querySelectorAll('.engine-node')];
-  const S = createStage(canvas, {bloom: [.7, .6, .7], exposure: 1, fog: 0, env: false, fov: 30});
+  const S = createStage(canvas, {bloom: [.5, .55, .75], exposure: 1, fog: 0, env: false, fov: 30});
   const {scene, camera} = S;
   const rig = new THREE.Group(); scene.add(rig);
 

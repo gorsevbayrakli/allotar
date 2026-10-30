@@ -20,6 +20,26 @@ if (loader){
   }
 }
 
+// ---------- page colour follows the scroll: dark navy around the animations, Allotar's light elsewhere ----------
+// Browsers without color-mix() keep the static look (dark sections as rounded panels).
+const root = document.documentElement;
+if (CSS.supports('color', 'color-mix(in srgb, red 50%, blue)')){
+  root.classList.add('dynamic');
+  const blocks = $$('.hero,.sec,.cta-band,footer').map(el => [el, el.matches('.hero,.sec.dk') ? 1 : 0]);
+  // share of the viewport's middle band covered by dark sections
+  const darkness = () => {
+    const c = innerHeight * .5, band = innerHeight * .12; let sum = 0, w = 0;
+    for (const [el, v] of blocks){ const r = el.getBoundingClientRect(), ov = Math.max(0, Math.min(r.bottom, c + band) - Math.max(r.top, c - band)); sum += ov * v; w += ov; }
+    return w ? sum / w : 1;
+  };
+  // background follows `dark` smoothly; text flips over a narrow range so it never sits at a low-contrast grey
+  const smooth = (a, b, x) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+  let dark = darkness();
+  const paint = () => { root.style.setProperty('--d', smooth(.1, .9, dark).toFixed(3)); root.style.setProperty('--dt', smooth(.42, .58, dark).toFixed(3)); root.classList.toggle('is-dark', dark > .5); };
+  const tick = () => { dark += (darkness() - dark) * .14; paint(); requestAnimationFrame(tick); };
+  paint(); requestAnimationFrame(tick);
+}
+
 // ---------- smooth scroll ----------
 let lenis = null;
 if (window.Lenis && !REDUCED){
@@ -93,21 +113,11 @@ const io = new IntersectionObserver(entries => entries.forEach(e => {
   $$('[data-count]', el).forEach(countUp);
 }), {threshold: .15, rootMargin: '0px 0px -6% 0px'});
 $$('[data-reveal],[data-split],.label,[data-count],.pipe').forEach(el => io.observe(el));
-$$('.label').forEach(l => l.setAttribute('data-scramble', ''));
 
 // ---------- card spotlight ----------
 $$('.card').forEach(c => c.addEventListener('pointermove', e => {
   const b = c.getBoundingClientRect(); c.style.setProperty('--mx', (e.clientX - b.left) + 'px'); c.style.setProperty('--my', (e.clientY - b.top) + 'px');
 }));
-
-// ---------- cursor ----------
-if (matchMedia('(hover:hover) and (pointer:fine)').matches && !REDUCED){
-  const cur = document.createElement('div'); cur.className = 'cursor'; document.body.appendChild(cur);
-  let x = innerWidth / 2, y = innerHeight / 2, cx = x, cy = y;
-  addEventListener('pointermove', e => { x = e.clientX; y = e.clientY; });
-  const loop = () => { cx += (x - cx) * .2; cy += (y - cy) * .2; cur.style.transform = `translate(${cx}px,${cy}px)`; requestAnimationFrame(loop); }; loop();
-  document.addEventListener('pointerover', e => cur.classList.toggle('hot', !!e.target.closest('a,button,.video-card,summary')));
-}
 
 // ---------- video modal ----------
 const modal = $('.modal');

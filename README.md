@@ -44,6 +44,14 @@ closed-loop/
 
 Three.js 0.165 and Lenis 1.1.13 load from jsDelivr; fonts from Google Fonts.
 
+## Colour
+
+Allotar's design system (Raleway; navy, blue, lavender, peach on a light background) throughout.
+Sections that hold films or animations are marked `.sec.dk`; as they reach the middle of the screen the
+page colour fades to dark navy, and back to light for the text sections (`site.js` sets `--d` / `--dt`,
+`site.css` mixes the palette with `color-mix()`). Browsers without `color-mix()` show those sections as
+rounded navy panels instead.
+
 ## Deploy
 
 Any static host works (Vercel: framework preset "Other", no build command, root as output).

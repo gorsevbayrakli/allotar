@@ -40,7 +40,7 @@ export function loadProtein(){
 }
 
 // ---------- stage: renderer + bloom, sized to its canvas ----------
-export function createStage(canvas, {bloom = [.55, .7, .82], exposure = .85, fog = .022, bg = '#03050b', fov = 32, env = true} = {}){
+export function createStage(canvas, {bloom = [.35, .6, .88], exposure = .85, fog = .022, bg = '#0d1538', fov = 32, env = true} = {}){
   const renderer = new THREE.WebGLRenderer({canvas, antialias: false, powerPreference: 'high-performance'});
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = exposure;
   const scene = new THREE.Scene();
@@ -95,8 +95,8 @@ export function makePoints(n, mat){
 // ---------- molecular surface ----------
 export const S_BOX = 78, K = .055;
 export function proteinMaterial(){
-  return new THREE.MeshPhysicalMaterial({vertexColors: true, roughness: .38, metalness: 0, clearcoat: .8, clearcoatRoughness: .2,
-    iridescence: .4, iridescenceIOR: 1.3, sheen: .25, sheenColor: new THREE.Color('#6f8fff'), sheenRoughness: .5, envMapIntensity: .7, transparent: true});
+  return new THREE.MeshPhysicalMaterial({vertexColors: true, roughness: .45, metalness: 0, clearcoat: .45, clearcoatRoughness: .3,
+    iridescence: .12, iridescenceIOR: 1.3, sheen: .1, sheenColor: new THREE.Color('#6f8fff'), sheenRoughness: .6, envMapIntensity: .5, transparent: true});
 }
 export function makeSurface(res, mat, maxPoly = 150000){
   const mc = new MarchingCubes(res, mat, false, true, maxPoly);
