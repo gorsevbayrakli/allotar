@@ -71,9 +71,9 @@ canvas#gl{position:absolute;inset:0;width:100%;height:100%;display:block}
 
 /* dark theme */
 body{background:#03050b}
-html.embed body{padding:0;background:#0d1538;min-height:0}
+html.embed body{padding:0;background:transparent;min-height:0}
 html.embed .stage{width:100%}
-.card{--navy:#e3e9ff;--ink:#c9d3f5;--dim:#7d88b3;--line:rgba(160,180,255,.14);--pass:#59a8ff;--fail:#ff4d5e;--teal:#19d3a8;--site:#ff7a3a;background:#0d1538}
+.card{--navy:#e3e9ff;--ink:#c9d3f5;--dim:#7d88b3;--line:rgba(160,180,255,.14);--pass:#59a8ff;--fail:#ff4d5e;--teal:#19d3a8;--site:#ff7a3a;background:#05070f}
 .step{color:var(--dim);border-color:rgba(160,180,255,.16);background:rgba(10,14,30,.4)}
 .step.on{color:#0a0f22;background:#dfe8ff;border-color:#dfe8ff;box-shadow:0 0 18px rgba(160,190,255,.4)}
 .scen{background:rgba(10,14,30,.55);border-color:var(--line)}
@@ -228,8 +228,8 @@ const canvas = document.getElementById('gl');
 const renderer = new THREE.WebGLRenderer({canvas, antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: CAPTURE});
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .82;
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#0d1538');
-scene.fog = new THREE.FogExp2('#0d1538', .022);
+scene.background = new THREE.Color('#05070f');
+scene.fog = new THREE.FogExp2('#05070f', .022);
 const camera = new THREE.PerspectiveCamera(32, 1, .1, 300);
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), .04).texture;
@@ -245,7 +245,7 @@ const backdrop = new THREE.Mesh(new THREE.SphereGeometry(120, 32, 16), new THREE
   vertexShader: `varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
   fragmentShader: `varying vec3 vP; void main(){
     float glow = pow(max(dot(vP, normalize(vec3(.1, .05, -1.))), 0.), 6.);
-    vec3 c = mix(vec3(.004, .007, .035), vec3(.01, .018, .07), smoothstep(-.6, .6, vP.y)) + vec3(.02, .035, .1) * glow;
+    vec3 c = mix(vec3(.003, .004, .01), vec3(.008, .012, .03), smoothstep(-.6, .6, vP.y)) + vec3(.012, .02, .06) * glow;
     gl_FragColor = vec4(c, 1.); }`
 }));
 
@@ -272,7 +272,7 @@ function makePoints(n){
   return L;
 }
 const hdr = (hex, k = 1) => { const c = new THREE.Color(hex); return [c.r*k, c.g*k, c.b*k]; };
-const C = {ice: hdr('#9cc0ff', .9), site: hdr('#ff7a3a', 3), red: hdr('#ff3b4a', 3.2), teal: hdr('#19d3a8', 3), pass: hdr('#59a8ff', 3), gold: hdr('#ffb067', 3.5), dust: hdr('#9fb8ff', 1.1)};
+const C = {ice: hdr('#9cc0ff', .9), site: hdr('#F2A37C', 2), red: hdr('#ff3b4a', 3.2), teal: hdr('#19d3a8', 3), pass: hdr('#59a8ff', 3), gold: hdr('#ffb067', 3.5), dust: hdr('#9fb8ff', 1.1)};
 
 // ---------- proteins: marching-cubes surfaces ----------
 const tgt = new THREE.Group(), off = new THREE.Group(); scene.add(tgt, off);
@@ -286,8 +286,8 @@ const mcO = new MarchingCubes(narrow ? 34 : 42, matO, false, true, 90000);
 for (const mc of [mcT, mcO]){ mc.isolation = 80; mc.frustumCulled = false; mc.scale.setScalar(S_BOX / 2 * K); }
 tgt.add(mcT); off.add(mcO); off.scale.setScalar(.7);
 const lin = h => { const c = new THREE.Color(h); return [c.r, c.g, c.b]; };
-const DOMC = {t: ['#6f8bff', '#9a7bff', '#3fa0ff'].map(lin), o: ['#5d6478', '#666a7c', '#5a6276'].map(lin)};
-const LC = {site: lin('#ff7a3a'), red: lin('#ff3344'), teal: lin('#19d3a8'), pass: lin('#7fb8ff')};
+const DOMC = {t: ['#7d8fd6', '#9A8FD6', '#4F8FD9'].map(lin), o: ['#5d6478', '#666a7c', '#5a6276'].map(lin)};
+const LC = {site: lin('#F2A37C'), red: lin('#ff3344'), teal: lin('#19d3a8'), pass: lin('#7fb8ff')};
 const mixc = (a, b, k) => [a[0] + (b[0] - a[0])*k, a[1] + (b[1] - a[1])*k, a[2] + (b[2] - a[2])*k];
 function updateSurface(mc, B, cols, siteCol, actCol){
   mc.reset();
