@@ -40,12 +40,13 @@ export function loadProtein(){
 }
 
 // ---------- stage: renderer + bloom, sized to its canvas ----------
-export function createStage(canvas, {bloom = [.55, .7, .82], exposure = .85, fog = .022, bg = '#03050b', fov = 32, env = true} = {}){
+export function createStage(canvas, {bloom = [.55, .7, .82], exposure = .85, fog = .022, bg = '#0a1030', fov = 32, env = true} = {}){
   const renderer = new THREE.WebGLRenderer({canvas, antialias: false, powerPreference: 'high-performance'});
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = exposure;
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(bg);
-  if (fog) scene.fog = new THREE.FogExp2(bg, fog);
+  const bgc = untoned(bg, exposure);   // so the canvas matches the page background after tone mapping
+  scene.background = bgc;
+  if (fog) scene.fog = new THREE.FogExp2(bgc, fog);
   const camera = new THREE.PerspectiveCamera(fov, 1, .1, 300);
   if (env){ const pm = new THREE.PMREMGenerator(renderer); scene.environment = pm.fromScene(new RoomEnvironment(), .04).texture; }
   const composer = new EffectComposer(renderer);
@@ -67,6 +68,17 @@ export function createStage(canvas, {bloom = [.55, .7, .82], exposure = .85, fog
   stage.resize = resize;
   stage.render = () => composer.render();
   return stage;
+}
+
+// linear colour that comes out as `hex` after ACES filmic tone mapping (as in three.js), found by iteration
+function untoned(hex, exposure){
+  const IN = [[.59719, .35458, .04823], [.076, .90834, .01566], [.0284, .13383, .83777]];
+  const OUT = [[1.60475, -.53108, -.07367], [-.10208, 1.10813, -.00605], [-.00327, -.07276, 1.07602]];
+  const mul = (M, v) => M.map(r => r[0] * v[0] + r[1] * v[1] + r[2] * v[2]);
+  const aces = c => mul(OUT, mul(IN, c.map(x => x * exposure / .6)).map(v => (v * (v + .0245786) - .000090537) / (v * (.983729 * v + .432951) + .238081))).map(x => clamp(x));
+  const t = new THREE.Color(hex), want = [t.r, t.g, t.b], c = [...want];
+  for (let k = 0; k < 60; k++){ const got = aces(c); for (let i = 0; i < 3; i++) c[i] = Math.max(0, c[i] + (want[i] - got[i]) * 1.5); }
+  return new THREE.Color(c[0], c[1], c[2]);
 }
 
 // ---------- additive glow points ----------
