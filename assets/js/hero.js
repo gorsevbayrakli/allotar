@@ -112,13 +112,13 @@ export async function initHero(canvas, {mode = 'protein'} = {}){
     const p = scrollP, narrow = S.w < 760;
     land.material.uniforms.uT.value = t;
 
-    // lights: each sample pops up where it is found and stays until the loop fades out
+    // lights: each sample fades in where it is found and stays until the loop fades out
     lights.n = 0;
     const u = t % LOOP, out = 1 - prog(u, FADE_AT, LOOP - FADE_AT - .3);
     for (const L of SAMPLES){
       if (u < L.t) continue;
-      const k = prog(u, L.t, .35), x = L.x + .03 * Math.sin(t * 2.3 + L.ph), z = L.z + .03 * Math.cos(t * 2 + L.ph);
-      lights.push(x, surfY(x, z, t) + .08 + .5 * (1 - ease(k)), z, L.back ? C_BACK : C_FWD, .85 * k * out, L.s * (1.6 - .6 * k));
+      const k = ease(prog(u, L.t, .6)), flash = Math.sin(Math.PI * prog(u, L.t, .6)), x = L.x + .03 * Math.sin(t * 2.3 + L.ph), z = L.z + .03 * Math.cos(t * 2 + L.ph);
+      lights.push(x, surfY(x, z, t) + .08, z, L.back ? C_BACK : C_FWD, (.85 * k + .5 * flash) * out, L.s * (.4 + .6 * k + .5 * flash));
     }
     lights.flush();
 
