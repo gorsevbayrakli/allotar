@@ -1,14 +1,15 @@
 // Full-screen hero: a meshed free-energy surface with wells, optionally with the target protein above it.
-// Small lights tell the sampling story: they fill the deepest well one by one, follow the minimum path
-// through a shallow intermediate well (where they linger) into the second-deepest well, and come back by
-// a different route. Scrolling dissolves the protein surface into its atoms.
+// Lights tell the sampling story. Each light is one sampled conformation: it appears where it is found and
+// stays until the loop ends. First the deepest well fills, then samples appear along the minimum path, pile up
+// in a shallow intermediate well, and fill the second-deepest well (forward, yellow); the way back appears
+// along a different route (backward, blue). Scrolling dissolves the protein surface into its atoms.
 import {THREE, createStage, makePoints, makeSurface, proteinMaterial, fillSurface, loadProtein, animate, clamp, ease, prog, rng, hdr, lin, K, DOM_COLORS} from './gl.js';
 
 // ---------- landscape (same function on the GPU and the CPU) ----------
 const BASE_Y = -2.6, AMP = .75;
 // wells: x, z, depth, radius
-const W1 = [-6, -7, 2.4, 2.3], W3 = [-.6, -5.6, .95, 1.5], W2 = [6, -9.2, 2.0, 2.2];
-const WELLS = [W1, W3, W2, [10.5, -3, .7, 2], [-12.5, -4, .8, 2.4], [-9.5, -15.5, 1, 3], [12.5, -14.5, .9, 2.6], [1, -17, .6, 2.6]];
+const W1 = [-2.4, -7.2, 2.4, 2.1], W3 = [1.5, -6, .95, 1.3], W2 = [5.6, -8.6, 2.0, 2.0];
+const WELLS = [W1, W3, W2, [11, -3, .7, 2], [-10, -4, .8, 2.4], [-8.5, -15.5, 1, 3], [12.5, -15, .9, 2.6], [2, -17.5, .6, 2.6]];
 function energy(x, z, t){
   let e = .35 * Math.sin(x * .28 + t * .25) + .25 * Math.sin(z * .35 - t * .2) + .12 * Math.sin((x + z) * .6 + t * .4);
   for (const w of WELLS){ const dx = x - w[0], dz = z - w[1]; e -= w[2] * Math.exp(-(dx * dx + dz * dz) / (w[3] * w[3])); }
@@ -48,20 +49,26 @@ function makeLandscape(){
 
 // ---------- the lights' route ----------
 const xz = (x, z) => new THREE.Vector3(x, 0, z);
-const P1a = new THREE.CatmullRomCurve3([xz(W1[0], W1[1]), xz(-4.6, -6.5), xz(-3, -6.1), xz(W3[0], W3[1])]);
-const P1b = new THREE.CatmullRomCurve3([xz(W3[0], W3[1]), xz(1.6, -6.4), xz(3.6, -7.8), xz(W2[0], W2[1])]);
-const P2 = new THREE.CatmullRomCurve3([xz(W2[0], W2[1]), xz(5.2, -12), xz(1.5, -13.4), xz(-2.6, -12.6), xz(-5.2, -10), xz(W1[0], W1[1])]);
-const LOOP = 26;
-// u: a light's own time in the loop -> [x, z, spread] (spread = how far it may sit from the path / well centre)
-function route(u){
-  const at = (c, s) => c.getPoint(clamp(s)), well = (w, k) => [w[0], w[1], w[3] * k];
-  if (u < 6) return well(W1, .5);
-  if (u < 8.5){ const p = at(P1a, ease((u - 6) / 2.5)); return [p.x, p.z, .12]; }
-  if (u < 11) return well(W3, .32);                                  // lingers in the shallow well
-  if (u < 13.5){ const p = at(P1b, ease((u - 11) / 2.5)); return [p.x, p.z, .12]; }
-  if (u < 19) return well(W2, .48);
-  if (u < 23.5){ const p = at(P2, ease((u - 19) / 4.5)); return [p.x, p.z, .14]; }   // a different way home
-  return well(W1, .5);
+const P1a = new THREE.CatmullRomCurve3([xz(W1[0], W1[1]), xz(-1.2, -6.6), xz(.2, -6.1), xz(W3[0], W3[1])]);
+const P1b = new THREE.CatmullRomCurve3([xz(W3[0], W3[1]), xz(2.9, -6.3), xz(4.3, -7.4), xz(W2[0], W2[1])]);
+const P2 = new THREE.CatmullRomCurve3([xz(W2[0], W2[1]), xz(5.2, -11), xz(2.6, -11.9), xz(-.4, -11.4), xz(-2.4, -9.8), xz(W1[0], W1[1])]);
+const LOOP = 26, FADE_AT = 24.2;
+// every sample: where it appears, when, and whether it belongs to the forward or the backward transition
+function buildSamples(){
+  const r = rng(21), S = [];
+  const well = (w, n, t0, t1, k, back = false) => { for (let i = 0; i < n; i++){ const a = r() * 6.283, d = Math.sqrt(r()) * w[3] * k;
+    S.push({x: w[0] + Math.cos(a) * d, z: w[1] + Math.sin(a) * d, t: t0 + (t1 - t0) * (i + r() * .6) / n, back}); } };
+  const path = (c, n, t0, t1, back = false) => { for (let i = 0; i < n; i++){ const s = (i + .5) / n, p = c.getPoint(s), q = c.getTangent(s), o = (r() - .5) * .35;
+    S.push({x: p.x - q.z * o, z: p.z + q.x * o, t: t0 + (t1 - t0) * s, back}); } };
+  well(W1, 60, .3, 5, .55);            // the deepest well fills first
+  path(P1a, 22, 5, 7.6);               // minimum path …
+  well(W3, 28, 7.6, 10.6, .4);         // … lingering in the shallow well
+  path(P1b, 22, 10.6, 13);
+  well(W2, 50, 13, 17, .5);            // second-deepest well
+  path(P2, 42, 17, 22.5, true);        // back by another route
+  well(W1, 12, 22, 23.5, .45, true);
+  S.forEach(p => { p.ph = r() * 6.283; p.s = .1 + r() * .07; });
+  return S;
 }
 
 export async function initHero(canvas, {mode = 'protein'} = {}){
@@ -74,9 +81,8 @@ export async function initHero(canvas, {mode = 'protein'} = {}){
   const land = makeLandscape(); scene.add(land);
 
   // lights
-  const NL = 200, lights = makePoints(NL, S.glow); scene.add(lights.points);
-  const LR = []; { const r = rng(21); for (let i = 0; i < NL; i++) LR.push({d: i * .035, a: r() * 6.283, r: Math.sqrt(r()), ph: r() * 6.283, s: .1 + r() * .08}); }
-  const C_LIGHT = hdr('#ffd38a', 2.6), C_LINGER = hdr('#ff9a62', 2.8);
+  const SAMPLES = buildSamples(), lights = makePoints(SAMPLES.length, S.glow); scene.add(lights.points);
+  const C_FWD = hdr('#ffd38a', 2.6), C_BACK = hdr('#6fb4ff', 2.8);
 
   // dust
   const dust = makePoints(500, S.glow); scene.add(dust.points);
@@ -106,16 +112,13 @@ export async function initHero(canvas, {mode = 'protein'} = {}){
     const p = scrollP, narrow = S.w < 760;
     land.material.uniforms.uT.value = t;
 
-    // lights: they appear one by one in the deepest well, then travel the loop
+    // lights: each sample pops up where it is found and stays until the loop fades out
     lights.n = 0;
-    for (const L of LR){
-      if (t < L.d) continue;
-      const u = (t - L.d) % LOOP, [cx, cz, spread] = route(u);
-      const lingering = u >= 8.5 && u < 11;
-      const x = cx + Math.cos(L.a + t * .3) * spread * L.r + .05 * Math.sin(t * 3 + L.ph);
-      const z = cz + Math.sin(L.a + t * .3) * spread * L.r + .05 * Math.cos(t * 2.6 + L.ph);
-      const drop = 1.6 * (1 - ease(prog(t, L.d, .8)));
-      lights.push(x, surfY(x, z, t) + .08 + drop, z, lingering ? C_LINGER : C_LIGHT, .85 * prog(t, L.d, .4), L.s);
+    const u = t % LOOP, out = 1 - prog(u, FADE_AT, LOOP - FADE_AT - .3);
+    for (const L of SAMPLES){
+      if (u < L.t) continue;
+      const k = prog(u, L.t, .35), x = L.x + .03 * Math.sin(t * 2.3 + L.ph), z = L.z + .03 * Math.cos(t * 2 + L.ph);
+      lights.push(x, surfY(x, z, t) + .08 + .5 * (1 - ease(k)), z, L.back ? C_BACK : C_FWD, .85 * k * out, L.s * (1.6 - .6 * k));
     }
     lights.flush();
 
@@ -147,8 +150,8 @@ export async function initHero(canvas, {mode = 'protein'} = {}){
       camera.position.set(mx * .8, 2.2 + p * .8 - my * .4, (narrow ? 18 : 12.5) - p * 2.5);
       camera.lookAt(narrow ? 0 : -.6, -1.4 - p * .4, -3);
     } else {
-      camera.position.set(mx * .8, 2.6 - my * .3, 8 - p * 2.5);
-      camera.lookAt(-4.2, -2.4, -7 - p * 2);   // landscape sits right of the headline
+      camera.position.set(mx * .8 - 1, 3 - my * .3, 8.6 - p * 2.5);
+      camera.lookAt(-1, -2.6, -8 - p * 2);   // wells sit right of the headline
     }
     S.render();
   });
