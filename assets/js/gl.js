@@ -107,15 +107,15 @@ export function makePoints(n, mat){
 // ---------- molecular surface ----------
 export const S_BOX = 78, K = .055;
 export function proteinMaterial(){
-  return new THREE.MeshPhysicalMaterial({vertexColors: true, roughness: .45, metalness: 0, clearcoat: .45, clearcoatRoughness: .3,
-    iridescence: .12, iridescenceIOR: 1.3, sheen: .1, sheenColor: new THREE.Color('#9A8FD6'), sheenRoughness: .6, envMapIntensity: .5, transparent: true});
+  return new THREE.MeshPhysicalMaterial({vertexColors: true, roughness: .72, metalness: 0, clearcoat: .08, clearcoatRoughness: .6,
+    envMapIntensity: .3, transparent: true});
 }
 export function makeSurface(res, mat, maxPoly = 150000){
   const mc = new MarchingCubes(res, mat, false, true, maxPoly);
   mc.isolation = 80; mc.frustumCulled = false; mc.scale.setScalar(S_BOX / 2 * K);
   return mc;
 }
-export const DOM_COLORS = ['#7d8fd6', '#9A8FD6', '#4F8FD9'].map(lin);   // Allotar palette: periwinkle, lavender, blue
+export const DOM_COLORS = ['#6f7ca6', '#8a80a8', '#5f7fa2'].map(lin);   // muted Allotar palette: slate periwinkle, dusty lavender, steel blue
 // colorOf(i) -> [r,g,b] (linear)
 export function fillSurface(mc, P, B, colorOf){
   mc.reset();

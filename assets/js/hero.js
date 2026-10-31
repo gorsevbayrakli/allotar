@@ -86,11 +86,11 @@ function buildSamples(){
 }
 
 export async function initHero(canvas, {mode = 'protein'} = {}){
-  const S = createStage(canvas, {bloom: [.35, .6, .88], exposure: .85, fog: .02});
+  const S = createStage(canvas, {bloom: [.3, .55, .93], exposure: .85, fog: .02});
   const {scene, camera} = S;
-  scene.add(new THREE.HemisphereLight(0xbcd0ff, 0x0a0f25, .35));
-  const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(-4, 6, 8); scene.add(key);
-  const rim = new THREE.DirectionalLight(0x7aa2ff, 3.2); rim.position.set(5, -2, -6); scene.add(rim);
+  scene.add(new THREE.HemisphereLight(0xdfe4f2, 0x1a1f33, .4));
+  const key = new THREE.DirectionalLight(0xfff3e8, 1.35); key.position.set(-4, 6, 8); scene.add(key);
+  const rim = new THREE.DirectionalLight(0xaab6d6, 1.1); rim.position.set(5, -2, -6); scene.add(rim);
 
   const land = makeLandscape(); scene.add(land);
 

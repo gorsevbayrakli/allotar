@@ -19,11 +19,11 @@ export async function initDynamics(root){
   const canvas = root.querySelector('canvas');
   const lbl = {open: root.querySelector('[data-l=open]'), closed: root.querySelector('[data-l=closed]'), ts: root.querySelector('[data-l=ts]')};
   const clock = root.querySelector('[data-clock]');
-  const S = createStage(canvas, {bloom: [.35, .55, .88], exposure: .85, fog: 0, fov: 30});
+  const S = createStage(canvas, {bloom: [.3, .55, .93], exposure: .85, fog: 0, fov: 30});
   const {scene, camera} = S;
-  scene.add(new THREE.HemisphereLight(0xbcd0ff, 0x0a0f25, .35));
-  const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(-4, 6, 8); scene.add(key);
-  const rim = new THREE.DirectionalLight(0x7aa2ff, 3); rim.position.set(5, -2, -6); scene.add(rim);
+  scene.add(new THREE.HemisphereLight(0xdfe4f2, 0x1a1f33, .4));
+  const key = new THREE.DirectionalLight(0xfff3e8, 1.35); key.position.set(-4, 6, 8); scene.add(key);
+  const rim = new THREE.DirectionalLight(0xaab6d6, 1.1); rim.position.set(5, -2, -6); scene.add(rim);
 
   // free-energy landscape with glowing contour grid
   const geo = new THREE.PlaneGeometry(7, 3.6, 140, 72); geo.rotateX(-Math.PI / 2);
