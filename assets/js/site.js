@@ -36,10 +36,9 @@ function onScrollFx(){
   orbEls.forEach((o, i) => { const [sx, sy, a] = ORB[i]; o.style.transform = `translate3d(${Math.sin(now * .07 + i * 2) * a + sx * (y % 2400) * .02}px, ${Math.cos(now * .05 + i) * a + sy * y}px, 0)`; });
   // sideways statement
   $$('.statement').forEach(st => {
-    const r = st.getBoundingClientRect(), p = clamp01(-r.top / Math.max(1, r.height - innerHeight)), huge = $('.huge', st);
-    const dist = Math.max(0, huge.scrollWidth - innerWidth + innerWidth * .08);
-    st.style.setProperty('--x', `${innerWidth * .3 * (1 - clamp01(p / .15)) - dist * clamp01((p - .1) / .7)}px`);
-    st.style.setProperty('--o', clamp01((p - .55) / .25));
+    const r = st.getBoundingClientRect(), p = clamp01(-r.top / Math.max(1, r.height - innerHeight));
+    st.style.setProperty('--x', `${(.5 - p) * innerWidth * .07}px`);
+    st.style.setProperty('--o', clamp01((p - .2) / .3));
   });
   // pinned story: which panel is showing
   $$('[data-story]').forEach(st => {

@@ -132,10 +132,12 @@ section{position:relative}
 .divider{height:1px;background:var(--line)}
 
 /* big statement that slides sideways with the scroll */
-.statement{height:240vh}
+.statement{height:190vh}
 .statement .pin{position:sticky;top:0;height:100vh;overflow:hidden;display:flex;flex-direction:column;justify-content:center}
-.statement .huge{color:var(--ink);font-size:clamp(64px,11vw,190px);font-weight:300;letter-spacing:-.045em;line-height:1.02;white-space:nowrap;will-change:transform;
-  transform:translate3d(var(--x,0),0,0);padding-left:var(--gut)}
+.statement .huge{color:var(--ink);font-size:clamp(38px,6vw,100px);font-weight:300;letter-spacing:-.04em;line-height:1.08;white-space:nowrap}
+/* the two lines drift gently in opposite directions */
+.statement .huge span{display:block;will-change:transform;transform:translate3d(var(--x,0),0,0)}
+.statement .huge span + span{transform:translate3d(calc(var(--x,0px) * -1 + 8vw),0,0)}
 .statement .huge em{font-style:normal;background:linear-gradient(100deg,#9fb8ff,#c7a8ff 45%,#F2A37C 90%);-webkit-background-clip:text;background-clip:text;color:transparent}
 .statement .row{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:clamp(30px,6vh,70px);opacity:var(--o,0);transform:translateY(calc((1 - var(--o,0)) * 30px))}
 .statement .row .label{grid-column:2}
@@ -398,6 +400,7 @@ footer{padding:90px 0 36px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   form .fields{grid-template-columns:1fr}
   .hero::before{background:linear-gradient(180deg,rgba(255,255,255,0) 20%,rgba(255,255,255,.75) 60%)}
   .statement .row{grid-template-columns:1fr} .statement .row > *{grid-column:1!important}
+  .statement .huge{white-space:normal} .statement .huge span + span{transform:translate3d(calc(var(--x,0px) * -1),0,0)}
   .story .panel{width:auto;left:var(--gut)!important;right:var(--gut)!important;top:auto;bottom:90px;transform:translateY(20px)}
   .story .panel.on{transform:none}
   .words .row{grid-template-columns:1fr}
