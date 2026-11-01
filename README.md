@@ -1,6 +1,9 @@
-# Allotar Therapeutics — website (dark edition)
+# Allotar Therapeutics — website (light edition)
 
-Static, multi-page site for Allotar Therapeutics with WebGL scenes (Three.js) in a dark, cinematic style.
+Static, multi-page site for Allotar Therapeutics with WebGL scenes (Three.js). White pages with soft pastel light,
+and scroll transitions: each section has a theme (`data-theme` light / mist / navy) and the page background
+cross-fades to it, blurred colour orbs drift behind the page, a headline slides sideways, the protein stays pinned
+while its story scrolls past, and big words sit over a parallax photo collage.
 Content comes from the current site preview (dev--allotar.netlify.app).
 
 ## Pages
@@ -32,7 +35,8 @@ assets/
   css/site.css          all styles
   js/site.js            loader, smooth scroll (Lenis), nav, reveals, slideshow, video modal, form; lazy-starts the scenes
   js/gl.js              shared WebGL helpers (renderer + bloom, glow points, protein surface, on-screen render loop)
-  js/hero.js            hero: particle wave field, optional assembling protein
+  js/hero.js            hero: meshed energy surface with sampled conformations, optional protein (light or dark)
+  js/story.js           home page pinned protein: open → closed → allosteric site, driven by scroll
   js/engine.js          AllotarX™ closed-loop engine ring
   js/dynamics.js        open ⇄ closed protein over a free-energy landscape
   js/allosteric.js      allosteric discovery charts (2D canvas)

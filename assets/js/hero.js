@@ -3,7 +3,7 @@
 // stays until the loop ends. First the deepest well fills, then samples appear along the minimum path, partly
 // filling each small local minimum on the way before moving on, and fill the second-deepest well (forward,
 // yellow); the way back runs along a different route through its own local minima (backward, blue). Scrolling dissolves the protein surface into its atoms.
-import {THREE, createStage, makePoints, makeSurface, proteinMaterial, fillSurface, loadProtein, animate, clamp, ease, prog, rng, hdr, lin, K, DOM_COLORS} from './gl.js';
+import {THREE, createStage, makePoints, makeSurface, proteinMaterial, fillSurface, loadProtein, animate, clamp, ease, prog, rng, hdr, lin, rgb, K, DOM_COLORS} from './gl.js';
 
 // ---------- landscape (same function on the GPU and the CPU) ----------
 const BASE_Y = -2.6, AMP = .75;
@@ -21,11 +21,11 @@ function energy(x, z, t){
 const surfY = (x, z, t) => BASE_Y + energy(x, z, t) * AMP;
 const GLSL_WELLS = WELLS.map(w => `e -= ${w[2].toFixed(2)} * exp(-dot(p - vec2(${w[0].toFixed(2)}, ${w[1].toFixed(2)}), p - vec2(${w[0].toFixed(2)}, ${w[1].toFixed(2)})) / ${(w[3] * w[3]).toFixed(2)});`).join('\n');
 
-function makeLandscape(){
+function makeLandscape(light){
   const geo = new THREE.PlaneGeometry(48, 34, 240, 170); geo.rotateX(-Math.PI / 2); geo.translate(0, 0, -9);
   return new THREE.Mesh(geo, new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, side: THREE.DoubleSide,
-    uniforms: {uT: {value: 0}},
+    uniforms: {uT: {value: 0}, uLight: {value: light ? 1 : 0}},
     vertexShader: `uniform float uT; varying vec3 vP; varying float vE; varying float vZ;
       float energy(vec2 p){
         float e = .35 * sin(p.x * .28 + uT * .25) + .25 * sin(p.y * .35 - uT * .2) + .12 * sin((p.x + p.y) * .6 + uT * .4);
@@ -35,7 +35,7 @@ function makeLandscape(){
       void main(){
         vec3 pos = position; vE = energy(pos.xz); pos.y = ${BASE_Y.toFixed(2)} + vE * ${AMP.toFixed(2)}; vP = pos;
         vec4 mv = modelViewMatrix * vec4(pos, 1.); vZ = -mv.z; gl_Position = projectionMatrix * mv; }`,
-    fragmentShader: `varying vec3 vP; varying float vE; varying float vZ;
+    fragmentShader: `uniform float uLight; varying vec3 vP; varying float vE; varying float vZ;
       void main(){
         vec2 q = vP.xz / .62;
         vec2 g = abs(fract(q) - .5) / fwidth(q);
@@ -45,6 +45,8 @@ function makeLandscape(){
         vec3 col = mix(vec3(.18, .32, 1.), vec3(.62, .45, 1.15), deep);
         float fade = smoothstep(46., 12., vZ) * smoothstep(23.5, 18., abs(vP.x)) * smoothstep(-26., -21., vP.z);
         float a = (.05 + .42 * grid + .35 * iso * deep) * fade;
+        // on a light page: navy-periwinkle lines that turn lavender in the wells
+        if (uLight > .5){ gl_FragColor = vec4(mix(vec3(.36, .42, .70), vec3(.50, .40, .74), deep), min(1., a * 1.15)); return; }
         gl_FragColor = vec4(col * a * (1.2 + deep), a);
       }`
   }));
@@ -85,21 +87,21 @@ function buildSamples(){
   return S;
 }
 
-export async function initHero(canvas, {mode = 'protein'} = {}){
-  const S = createStage(canvas, {bloom: [.3, .55, .93], exposure: .85, fog: .02});
+export async function initHero(canvas, {mode = 'protein', light = false} = {}){
+  const S = createStage(canvas, {bloom: [.3, .55, .93], exposure: .85, fog: .02, light});
   const {scene, camera} = S;
   scene.add(new THREE.HemisphereLight(0xdfe4f2, 0x1a1f33, .4));
   const key = new THREE.DirectionalLight(0xfff3e8, 1.35); key.position.set(-4, 6, 8); scene.add(key);
   const rim = new THREE.DirectionalLight(0xaab6d6, 1.1); rim.position.set(5, -2, -6); scene.add(rim);
 
-  const land = makeLandscape(); scene.add(land);
+  const land = makeLandscape(light); scene.add(land);
 
   // lights
   const SAMPLES = buildSamples(), lights = makePoints(SAMPLES.length, S.glow); scene.add(lights.points);
-  const C_FWD = hdr('#ffd38a', 2.6), C_BACK = hdr('#6fb4ff', 2.8);
+  const C_FWD = light ? rgb('#e9783f') : hdr('#ffd38a', 2.6), C_BACK = light ? rgb('#3d6fd6') : hdr('#6fb4ff', 2.8);
 
   // dust
-  const dust = makePoints(300, S.glow); scene.add(dust.points);
+  const dust = makePoints(300, S.glow); if (!light) scene.add(dust.points);
   const DUST = []; { const r = rng(9); for (let i = 0; i < 300; i++) DUST.push([(r() - .5) * 40, (r() - .1) * 14, -r() * 30 + 4, r() * 6.28, .1 + r() * .25, .02 + r() * .05, .1 + r() * .4]); }
   const DCOL = hdr('#9fb8ff', 1.1);
 
@@ -115,7 +117,7 @@ export async function initHero(canvas, {mode = 'protein'} = {}){
     for (let i = 0; i < P.N; i++){ const u = r()*2 - 1, th = r()*6.283, s = Math.sqrt(1 - u*u), d = 50 + r()*110;
       SCAT[i*3] = P.CC.x + Math.cos(th)*s*d; SCAT[i*3+1] = P.CC.y + u*d*.6; SCAT[i*3+2] = P.CC.z + Math.sin(th)*s*d; }
   }
-  const SITE = lin('#F2A37C'), C_SITE = hdr('#F2A37C', 1.8), C_ICE = hdr('#9cc0ff', .9);
+  const SITE = lin('#F2A37C'), C_SITE = light ? rgb('#e9783f') : hdr('#F2A37C', 1.8), C_ICE = light ? rgb('#5b6aa3') : hdr('#9cc0ff', .9);
 
   let scrollP = 0, mx = 0, my = 0, tmx = 0, tmy = 0;
   addEventListener('scroll', () => { scrollP = clamp(scrollY / innerHeight); }, {passive: true});
@@ -144,7 +146,7 @@ export async function initHero(canvas, {mode = 'protein'} = {}){
     if (P){
       const a = ease(prog(t, .3, 2.8)), surf = ease(prog(t, 1.6, 1.6)) * (1 - p * .95);
       P.conform(B, t, .35 - .35 * Math.cos(2 * Math.PI * t / 7));
-      group.position.set(narrow ? 0 : 3.4, narrow ? 3.3 + p * 1.2 : .9 + p * 1.2, 0);
+      group.position.set(narrow ? .4 : 3.4, narrow ? 2.5 + p * 1.2 : .45 + p * 1.2, 0); group.scale.setScalar(narrow ? .7 : 1);
       group.rotation.set(.15 + my * .2, t * .08 + p * 1.6 + mx * .5, 0);
       const lit = Math.floor(t / 3.2) % 3, litK = Math.sin(Math.PI * ((t / 3.2) % 1)) * prog(t, 3, 1);
       if (surf > .005){

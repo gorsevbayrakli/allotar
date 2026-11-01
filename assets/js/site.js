@@ -20,6 +20,41 @@ if (loader){
   }
 }
 
+// ---------- section themes: the page background follows the section in the middle of the screen ----------
+const themed = $$('[data-theme]');
+const orbs = document.createElement('div'); orbs.className = 'orbs'; orbs.setAttribute('aria-hidden', 'true'); orbs.innerHTML = '<i></i><i></i><i></i>';
+document.body.prepend(orbs);
+const orbEls = $$('i', orbs), ORB = [[.9, -.06, 40], [-.7, .05, 52], [.6, -.1, 46]];
+let tone = '';
+function onScrollFx(){
+  const y = scrollY, mid = innerHeight * .55;
+  let t = 'light';
+  for (const s of themed){ const r = s.getBoundingClientRect(); if (r.top <= mid && r.bottom > mid){ t = s.dataset.theme; break; } }
+  if (t !== tone){ tone = t; document.documentElement.dataset.tone = t; }
+  // orbs drift slowly on their own and move at different speeds with the scroll
+  const now = performance.now() / 1000;
+  orbEls.forEach((o, i) => { const [sx, sy, a] = ORB[i]; o.style.transform = `translate3d(${Math.sin(now * .07 + i * 2) * a + sx * (y % 2400) * .02}px, ${Math.cos(now * .05 + i) * a + sy * y}px, 0)`; });
+  // sideways statement
+  $$('.statement').forEach(st => {
+    const r = st.getBoundingClientRect(), p = clamp01(-r.top / Math.max(1, r.height - innerHeight)), huge = $('.huge', st);
+    const dist = Math.max(0, huge.scrollWidth - innerWidth + innerWidth * .08);
+    st.style.setProperty('--x', `${innerWidth * .3 * (1 - clamp01(p / .15)) - dist * clamp01((p - .1) / .7)}px`);
+    st.style.setProperty('--o', clamp01((p - .55) / .25));
+  });
+  // pinned story: which panel is showing
+  $$('[data-story]').forEach(st => {
+    const r = st.getBoundingClientRect(), p = clamp01(-r.top / Math.max(1, r.height - innerHeight)), n = Math.min(2, Math.floor(p * 3));
+    $$('.panel', st).forEach((el, i) => el.classList.toggle('on', i === n && r.top < innerHeight * .5 && r.bottom > innerHeight * .5));
+    $$('.count i', st).forEach((el, i) => el.classList.toggle('on', i === n));
+  });
+  // parallax
+  $$('[data-speed]').forEach(el => { const r = el.getBoundingClientRect(); if (r.bottom < -200 || r.top > innerHeight + 200) return;
+    el.style.transform = `translate3d(0, ${(r.top + r.height / 2 - innerHeight / 2) * -+el.dataset.speed}px, 0)`; });
+}
+function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+if (!REDUCED){ const fx = () => { onScrollFx(); requestAnimationFrame(fx); }; requestAnimationFrame(fx); }
+else { addEventListener('scroll', onScrollFx, {passive: true}); onScrollFx(); }
+
 // ---------- smooth scroll ----------
 let lenis = null;
 if (window.Lenis && !REDUCED){
@@ -146,7 +181,8 @@ if (form){
 
 // ---------- WebGL scenes start when they approach the viewport ----------
 const scenes = {
-  hero: el => import('./hero.js').then(m => m.initHero(el, {mode: el.dataset.mode || 'protein'})),
+  hero: el => import('./hero.js').then(m => m.initHero(el, {mode: el.dataset.mode || 'protein', light: el.closest('[data-theme]')?.dataset.theme !== 'navy'})),
+  story: el => import('./story.js').then(m => m.initStory(el)),
   engine: el => import('./engine.js').then(m => m.initEngine(el)),
   dynamics: el => import('./dynamics.js').then(m => m.initDynamics(el)),
   allo: el => import('./allosteric.js').then(m => m.initAllosteric(el)),

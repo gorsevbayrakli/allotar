@@ -16,6 +16,8 @@ export function rng(seed){ return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 
 export const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 export const hdr = (hex, k = 1) => { const c = new THREE.Color(hex); return [c.r*k, c.g*k, c.b*k]; };
 export const lin = hex => { const c = new THREE.Color(hex); return [c.r, c.g, c.b]; };
+// display (sRGB) components, for shaders that write straight to a transparent canvas
+export const rgb = hex => { const n = parseInt(hex.slice(1), 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; };
 
 // ---------- protein: E. coli adenylate kinase, open (4AKE) and closed (1AKE) heavy atoms ----------
 let proteinPromise = null;
@@ -40,33 +42,38 @@ export function loadProtein(){
 }
 
 // ---------- stage: renderer + bloom, sized to its canvas ----------
-export function createStage(canvas, {bloom = [.55, .7, .82], exposure = .85, fog = .022, bg = '#0a1030', fov = 32, env = true} = {}){
-  const renderer = new THREE.WebGLRenderer({canvas, antialias: false, powerPreference: 'high-performance'});
+// light: transparent canvas over a light page, no bloom, glow points drawn as soft opaque dots
+export function createStage(canvas, {bloom = [.55, .7, .82], exposure = .85, fog = .022, bg = '#0a1030', fov = 32, env = true, light = false} = {}){
+  const renderer = new THREE.WebGLRenderer({canvas, antialias: light, alpha: light, powerPreference: 'high-performance'});
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = exposure;
   const scene = new THREE.Scene();
-  const bgc = untoned(bg, exposure);   // so the canvas matches the page background after tone mapping
-  scene.background = bgc;
-  if (fog) scene.fog = new THREE.FogExp2(bgc, fog);
+  if (light) renderer.setClearColor(0, 0);
+  else {
+    const bgc = untoned(bg, exposure);   // so the canvas matches the page background after tone mapping
+    scene.background = bgc;
+    if (fog) scene.fog = new THREE.FogExp2(bgc, fog);
+  }
   const camera = new THREE.PerspectiveCamera(fov, 1, .1, 300);
   if (env){ const pm = new THREE.PMREMGenerator(renderer); scene.environment = pm.fromScene(new RoomEnvironment(), .04).texture; }
-  const composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(scene, camera));
-  const bloomPass = bloom ? new UnrealBloomPass(new THREE.Vector2(1, 1), ...bloom) : null;
-  if (bloomPass) composer.addPass(bloomPass);
-  composer.addPass(new OutputPass());
-  const glow = glowMaterial();
-  const stage = {renderer, scene, camera, composer, glow, w: 1, h: 1, onResize: null};
+  const composer = light ? null : new EffectComposer(renderer);
+  if (composer){
+    composer.addPass(new RenderPass(scene, camera));
+    if (bloom) composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), ...bloom));
+    composer.addPass(new OutputPass());
+  }
+  const glow = glowMaterial(light);
+  const stage = {renderer, scene, camera, composer, glow, light, w: 1, h: 1, onResize: null};
   const resize = () => {
     const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1, dpr = Math.min(devicePixelRatio || 1, 2);
     stage.w = w; stage.h = h;
-    renderer.setPixelRatio(dpr); renderer.setSize(w, h, false); composer.setPixelRatio(dpr); composer.setSize(w, h);
+    renderer.setPixelRatio(dpr); renderer.setSize(w, h, false); if (composer){ composer.setPixelRatio(dpr); composer.setSize(w, h); }
     camera.aspect = w / h; camera.updateProjectionMatrix();
     glow.uniforms.uPx.value = h * dpr / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
     stage.onResize && stage.onResize(w, h);
   };
   new ResizeObserver(resize).observe(canvas); resize();
   stage.resize = resize;
-  stage.render = () => composer.render();
+  stage.render = () => composer ? composer.render() : renderer.render(scene, camera);
   return stage;
 }
 
@@ -82,7 +89,15 @@ function untoned(hex, exposure){
 }
 
 // ---------- additive glow points ----------
-export function glowMaterial(){
+export function glowMaterial(light = false){
+  if (light) return new THREE.ShaderMaterial({
+    uniforms: {uPx: {value: 800}}, transparent: true, depthWrite: false,
+    vertexShader: `attribute vec3 aColor; attribute float aAlpha; attribute float aSize; uniform float uPx; varying vec3 vC; varying float vA;
+      void main(){ vC = aColor; vA = aAlpha; vec4 mv = modelViewMatrix * vec4(position, 1.); gl_Position = projectionMatrix * mv; gl_PointSize = aSize * uPx / -mv.z; }`,
+    fragmentShader: `varying vec3 vC; varying float vA;
+      void main(){ float d = length(gl_PointCoord - .5); float core = smoothstep(.24, .16, d), halo = smoothstep(.5, .16, d) * .28; float a = clamp(core + halo, 0., 1.) * vA;
+        if (a < .004) discard; gl_FragColor = vec4(vC, a); }`
+  });
   return new THREE.ShaderMaterial({
     uniforms: {uPx: {value: 800}}, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     vertexShader: `attribute vec3 aColor; attribute float aAlpha; attribute float aSize; uniform float uPx; varying vec3 vC; varying float vA;
