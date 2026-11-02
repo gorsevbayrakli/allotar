@@ -45,8 +45,14 @@ function makeLandscape(light){
         vec3 col = mix(vec3(.18, .32, 1.), vec3(.62, .45, 1.15), deep);
         float fade = smoothstep(46., 12., vZ) * smoothstep(23.5, 18., abs(vP.x)) * smoothstep(-26., -21., vP.z);
         float a = (.05 + .42 * grid + .35 * iso * deep) * fade;
-        // on a light page: navy-periwinkle lines that turn lavender in the wells
-        if (uLight > .5){ gl_FragColor = vec4(mix(vec3(.36, .42, .70), vec3(.50, .40, .74), deep), min(1., a * 1.15)); return; }
+        // on a light page: a clean grid only (no contour rings), thinned where the lines bunch up on steep walls,
+        // and a soft lavender tint that marks the wells
+        if (uLight > .5){
+          vec2 fw = fwidth(q); float dense = smoothstep(.22, .55, max(fw.x, fw.y));
+          float la = (.05 + .5 * grid * (1. - dense)) * fade, fill = .16 * deep * fade;
+          vec3 c = mix(vec3(.36, .42, .70), vec3(.52, .44, .78), deep);
+          gl_FragColor = vec4(c, min(1., la + fill)); return;
+        }
         gl_FragColor = vec4(col * a * (1.2 + deep), a);
       }`
   }));
@@ -125,7 +131,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
 
   animate(canvas, (dt, t) => {
     mx += (tmx - mx) * Math.min(1, dt * 2); my += (tmy - my) * Math.min(1, dt * 2);
-    const p = scrollP, narrow = S.w < 760;
+    const p = scrollP, narrow = S.w < 1000;
     land.material.uniforms.uT.value = t;
 
     // lights: each sample fades in where it is found and stays until the loop fades out
@@ -146,7 +152,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
     if (P){
       const a = ease(prog(t, .3, 2.8)), surf = ease(prog(t, 1.6, 1.6)) * (1 - p * .95);
       P.conform(B, t, .35 - .35 * Math.cos(2 * Math.PI * t / 7));
-      group.position.set(narrow ? .4 : 3.4, narrow ? 2.5 + p * 1.2 : .45 + p * 1.2, 0); group.scale.setScalar(narrow ? .7 : 1);
+      group.position.set(narrow ? .4 : 3.4, narrow ? 2.5 + p * 1.2 : .45 + p * 1.2, 0); group.scale.setScalar(narrow ? (S.w < 600 ? .7 : .85) : 1);
       group.rotation.set(.15 + my * .2, t * .08 + p * 1.6 + mx * .5, 0);
       const lit = Math.floor(t / 3.2) % 3, litK = Math.sin(Math.PI * ((t / 3.2) % 1)) * prog(t, 3, 1);
       if (surf > .005){

@@ -47,6 +47,8 @@ canvas#gl{position:absolute;inset:0;width:100%;height:100%;display:block}
 .pill{font-size:calc(9.5*var(--u));font-weight:700;letter-spacing:.06em;padding:calc(2*var(--u)) calc(8*var(--u));border-radius:999px;visibility:hidden}
 .pill.hit{visibility:visible;color:#c4561d;background:#fde7da}
 .pill.fail{visibility:visible;color:#b83a3a;background:#fbe3e3}
+.pill.dep{visibility:visible;color:#6b7290;background:#eceef5}
+.row.dep{opacity:.5}
 .st{justify-self:center;width:calc(19*var(--u));height:calc(19*var(--u));border-radius:50%;border:1.5px solid #c9cde0;position:relative}
 .st.pass{background:var(--pass);border-color:var(--pass)}
 .st.fail{background:var(--fail);border-color:var(--fail)}
@@ -82,7 +84,7 @@ html.embed .stage{width:100%}
 .st{border-color:rgba(160,180,255,.25)}
 .st.pass{box-shadow:0 0 10px rgba(89,168,255,.6)} .st.fail{box-shadow:0 0 10px rgba(255,77,94,.6)}
 .st.na::after{background:var(--dim)}
-.pill.hit{color:#ffb38a;background:rgba(255,122,58,.16)} .pill.fail{color:#ff8d98;background:rgba(255,77,94,.14)}
+.pill.hit{color:#ffb38a;background:rgba(255,122,58,.16)} .pill.fail{color:#ff8d98;background:rgba(255,77,94,.14)} .pill.dep{color:#a3acd6;background:rgba(160,170,210,.12)}
 .track{background:rgba(160,180,255,.2)} .track i{box-shadow:0 0 8px var(--teal)} .track b{background:#fff;border-color:#9fb8ff;box-shadow:0 0 10px #9fb8ff}
 .chip{background:rgba(10,14,30,.65);border-color:var(--line);box-shadow:none}
 .tag.sitetag{background:rgba(10,14,30,.6);color:var(--navy)}
@@ -91,7 +93,7 @@ html.embed .stage{width:100%}
 <body>
 <div class="stage">
 <div class="card" id="card">
-  <canvas id="gl" aria-label="Animation: on a dynamic target protein, AllotarX designs a different modality for each allosteric site, one at a time, tests binding, function and selectivity against an off-target protein, and redesigns candidates that fail until each site has a selective, functional hit."></canvas>
+  <canvas id="gl" aria-label="Animation: on a dynamic target protein, AllotarX designs a different modality for each allosteric site, one at a time, tests binding, function and selectivity against an off-target protein, and redesigns candidates that fail. Sites A and B end with selective, functional hits; site C is still not selective after two rounds and is deprioritized."></canvas>
   <div class="hud" id="hud">
     <div class="top">
       <div class="steps"><div class="step" data-k="design">Design</div><div class="step" data-k="test">Test</div><div class="step" data-k="learn">Learn</div></div>
@@ -147,10 +149,11 @@ const CANDS = [
   {site: 0, v: 1, start: 2.8,  fate: 'hit',  bind: 3.8,  wave: 4.1,  ghost: 4.8,  leave: 7.2},
   {site: 1, v: 1, start: 7.8,  fate: 'sel',  bind: 8.8,  wave: 9.1,  ghost: 9.8,  leave: 11.2},
   {site: 1, v: 2, start: 11.9, fate: 'hit',  bind: 12.9, wave: 13.2, ghost: 13.9, leave: 16.0},
-  {site: 2, v: 1, start: 16.4, fate: 'bind', bind: 17.4, leave: 18.2},
-  {site: 2, v: 2, start: 18.7, fate: 'func', bind: 19.7, wave: 20.0, leave: 21.2},
-  {site: 2, v: 3, start: 21.8, fate: 'hit',  bind: 22.8, wave: 23.1, ghost: 23.8, leave: 27},
+  {site: 2, v: 1, start: 16.4, fate: 'sel',  bind: 17.4, wave: 17.7, ghost: 18.4, leave: 19.8},
+  {site: 2, v: 2, start: 20.5, fate: 'sel',  bind: 21.5, wave: 21.8, ghost: 22.5, leave: 23.9},
 ];
+// after two rounds without selectivity, site C is dropped and the loop does not return to it
+const DEPRIO_SITE = 2, DEPRIO_AT = 23.9;
 CANDS.forEach((c, i) => {
   c.id = i; c.kind = KIND[c.site];
   c.funcAt = c.wave !== undefined ? c.wave + .7 : null;
@@ -176,16 +179,14 @@ const PHASES = [
   [12.9, 15, 'test', 'Testing macrocycle v2'],
   [15, 16.3, '', 'Hit · drives an intermediate state'],
   [16.3, 17.4, 'design', 'Site C · a miniprotein for the flat surface'],
-  [17.4, 17.8, 'test', 'Testing miniprotein v1'],
-  [17.8, 18.7, 'learn', 'No binding → redesign'],
-  [18.7, 19.7, 'design', 'Miniprotein v2'],
-  [19.7, 20.8, 'test', 'Testing miniprotein v2'],
-  [20.8, 21.8, 'learn', 'Binds but does not modulate → redesign'],
-  [21.8, 22.8, 'design', 'Miniprotein v3'],
-  [22.8, 24.9, 'test', 'Testing miniprotein v3'],
-  [24.9, T + 1, '', 'Selective, functional hits across sites and modalities'],
+  [17.4, 19.3, 'test', 'Testing miniprotein v1'],
+  [19.3, 20.5, 'learn', 'Binds the off-target too → redesign'],
+  [20.5, 21.5, 'design', 'Miniprotein v2 · tuned for selectivity'],
+  [21.5, 23.4, 'test', 'Testing miniprotein v2'],
+  [23.4, 24.9, '', 'Still not selective · Site C deprioritized'],
+  [24.9, T + 1, '', 'Two selective, functional hits · Site C deprioritized'],
 ];
-const LEARN = [[10.9, 11.9], [17.8, 18.7], [20.8, 21.8]];
+const LEARN = [[10.9, 11.9], [19.3, 20.5]];
 const phaseAt = t => PHASES.find(p => t >= p[0] && t < p[1]);
 const scenAt = t => SCEN.find(s => t >= s.a && t < s.b) || null;
 const currentCand = (site, t) => { let c = null; for (const k of CANDS) if (k.site === site && t >= k.start) c = k; return c; };
@@ -287,7 +288,7 @@ for (const mc of [mcT, mcO]){ mc.isolation = 80; mc.frustumCulled = false; mc.sc
 tgt.add(mcT); off.add(mcO); off.scale.setScalar(.7);
 const lin = h => { const c = new THREE.Color(h); return [c.r, c.g, c.b]; };
 const DOMC = {t: ['#6f7ca6', '#8a80a8', '#5f7fa2'].map(lin), o: ['#5d6478', '#666a7c', '#5a6276'].map(lin)};
-const LC = {site: lin('#F2A37C'), red: lin('#ff3344'), teal: lin('#19d3a8'), pass: lin('#7fb8ff')};
+const LC = {site: lin('#F2A37C'), red: lin('#ff3344'), teal: lin('#19d3a8'), pass: lin('#7fb8ff'), dep: lin('#3a4058')};
 const mixc = (a, b, k) => [a[0] + (b[0] - a[0])*k, a[1] + (b[1] - a[1])*k, a[2] + (b[2] - a[2])*k];
 function updateSurface(mc, B, cols, siteCol, actCol){
   mc.reset();
@@ -406,7 +407,7 @@ const rows = SITE_KEYS.map((k, i) => {
   const r = document.createElement('div'); r.className = 'row';
   r.innerHTML = `<div class="name"><i style="background:${MOD_COL[KIND[i]]};box-shadow:0 0 8px ${MOD_COL[KIND[i]]}"></i><span></span><span class="pill"></span></div><div class="st"></div><div class="st"></div><div class="st"></div>`;
   $('panel').appendChild(r);
-  return {name: r.querySelector('.name span'), pill: r.querySelector('.pill'), st: [...r.querySelectorAll('.st')], key: ''};
+  return {row: r, name: r.querySelector('.name span'), pill: r.querySelector('.pill'), st: [...r.querySelectorAll('.st')], key: ''};
 });
 const siteTags = SITE_KEYS.map(() => { const d = document.createElement('div'); d.className = 'tag sitetag'; hud.appendChild(d); return d; });
 const GLYPHS = '!<>-_/[]{}=+*^?#ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -427,6 +428,7 @@ function results(c, t){
   const f = c.fate === 'bind' ? (b ? 2 : 0) : t >= c.funcAt ? (c.fate === 'func' ? -1 : 1) : 0;
   const s = (c.fate === 'bind' || c.fate === 'func') ? ((c.fate === 'bind' ? b : f) ? 2 : 0) : t >= c.selAt ? (c.fate === 'sel' ? -1 : 1) : 0;
   const failed = b === -1 || f === -1 || s === -1, hit = c.fate === 'hit' && t >= c.selAt + .2;
+  if (c.site === DEPRIO_SITE && t >= DEPRIO_AT) return {st: [b, f, s], pill: 'dep'};
   return {st: [b, f, s], pill: hit ? 'hit' : failed ? 'fail' : ''};
 }
 let lastPh = null, lastCyc = null;
@@ -448,7 +450,8 @@ function updateHUD(t, a){
     const keyS = name + r.st.join() + r.pill;
     if (keyS === R.key) return; R.key = keyS;
     R.name.innerHTML = name;
-    R.pill.className = 'pill ' + r.pill; R.pill.textContent = r.pill === 'hit' ? 'HIT' : r.pill === 'fail' ? 'RETRY' : '';
+    R.pill.className = 'pill ' + r.pill; R.pill.textContent = r.pill === 'hit' ? 'HIT' : r.pill === 'fail' ? 'RETRY' : r.pill === 'dep' ? 'DEPRIORITIZED' : '';
+    R.row.classList.toggle('dep', r.pill === 'dep');
     r.st.forEach((s, j) => R.st[j].className = 'st' + (s === 1 ? ' pass' : s === -1 ? ' fail' : s === 2 ? ' na' : ''));
   });
 }
@@ -538,7 +541,8 @@ function update(t){
     }
     g *= fo * a; red *= fo; ored *= fo;
     siteGlow.push({g, red, ored, opass});
-    siteCol.push(red > .01 ? [LC.red, red] : [LC.site, Math.min(1, g * 1.1)]);
+    const dep = i === DEPRIO_SITE ? prog(t, DEPRIO_AT, .8) * fo * a : 0;   // deprioritized site fades to grey
+    siteCol.push(dep > .01 ? [LC.dep, dep * .8] : red > .01 ? [LC.red, red] : [LC.site, Math.min(1, g * 1.1)]);
     offCol.push(ored > .01 ? [LC.red, ored] : [LC.pass, opass * .6]);
   }
   act = Math.min(act, 1.6) * fo;
