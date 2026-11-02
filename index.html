@@ -10,10 +10,10 @@
 <link rel="icon" href="assets/brand/logo-mark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/site.css">
+<link rel="stylesheet" href="assets/css/site.css?v=3">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.min.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}</script>
 <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js" defer></script>
-<script type="module" src="assets/js/site.js"></script>
+<script type="module" src="assets/js/site.js?v=3"></script>
 </head>
 <body data-page="home">
 <div class="loader" aria-hidden="true"><div class="in"><img src="assets/brand/logo-mark.png" alt="Allotar Therapeutics"><div class="pct">000</div><div class="bar"><i></i></div></div></div>
@@ -144,15 +144,9 @@
         <h2 data-split>From dynamic ensembles to selective therapeutics</h2>
         <p class="lead" data-reveal>Identify functional allosteric sites, prioritize druggable pockets, design selective interventions, and improve every cycle with functional validation.</p>
       </div>
-      <div class="frame engine" data-gl="engine" data-reveal>
-  <canvas aria-label="AllotarX closed-loop discovery engine: Design, Build, Test and Learn in a continuous cycle"></canvas>
-  <span class="corner tl">AllotarX™ <b>engine</b></span><span class="corner br">loop · continuous</span>
-  <div class="engine-core"><b>AllotarX™</b><span>closed-loop<br>discovery engine</span></div>
-  <div class="engine-node" style="--c:#4F8FD9"><small>Precision allostery</small><b>Design</b></div>
-  <div class="engine-node" style="--c:#8a6fe0"><small>Selective hits</small><b>Build</b></div>
-  <div class="engine-node" style="--c:#6a7cff"><small>Functional validation</small><b>Test</b></div>
-  <div class="engine-node" style="--c:#e0753f"><small>Refined training</small><b>Learn</b></div>
-</div>
+      <div class="selmap" data-gl="selmap" data-reveal>
+        <canvas aria-label="Selectivity map: four design rounds measured against the target and five off-target proteins. Round by round, off-target binding fades while target binding stays strong, ending in a selective hit."></canvas>
+      </div>
     </div>
     <div class="grid4" style="margin-top:56px">
       <div class="card" data-reveal><span class="badge" style="--c:#4F8FD9">Design</span><p>Functional allosteric sites mapped across dynamic conformational ensembles — selective interventions designed across small molecules, macrocyclic peptides, and computationally designed scaffolds</p></div>

@@ -183,6 +183,7 @@ const scenes = {
   hero: el => import('./hero.js').then(m => m.initHero(el, {mode: el.dataset.mode || 'protein', light: el.closest('[data-theme]')?.dataset.theme !== 'navy'})),
   story: el => import('./story.js').then(m => m.initStory(el)),
   engine: el => import('./engine.js').then(m => m.initEngine(el)),
+  selmap: el => import('./selmap.js').then(m => m.initSelmap(el)),
   dynamics: el => import('./dynamics.js').then(m => m.initDynamics(el)),
   allo: el => import('./allosteric.js').then(m => m.initAllosteric(el)),
 };
