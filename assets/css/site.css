@@ -206,7 +206,7 @@ section{position:relative}
 .teaser:hover .more svg{transform:translateX(4px)}
 
 /* platform: publications */
-.science-head{align-items:end;margin-bottom:56px}
+.science-head{align-items:start;margin-bottom:56px}
 .pubstats{display:flex;gap:48px;margin-top:32px}
 .pubstats b{display:block;font-size:clamp(34px,3.4vw,48px);font-weight:300;letter-spacing:-.04em;line-height:1;background:linear-gradient(120deg,#23326d,#4F8FD9 60%,#9A8FD6);-webkit-background-clip:text;background-clip:text;color:transparent}
 .pubstats span{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
