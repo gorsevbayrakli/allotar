@@ -36,20 +36,28 @@ export function loadProtein(){
         B[j] = P0[j] + (P1[j] - P0[j]) * lam + jit; B[j+1] = P0[j+1] + (P1[j+1] - P0[j+1]) * lam + jit*.7; B[j+2] = P0[j+2] + (P1[j+2] - P0[j+2]) * lam;
       }
     };
-    return {N, P0, P1, RAD: d.rad.map(r => r / 10), dom: d.dom, sites: ['A', 'B', 'C'].map(k => d.sites[k]), act: d.act, siteOf, isAct, phase, CC, conform};
+    // burial: neighbours within 8 Å; buried atoms are shaded darker, like ambient occlusion in a render
+    const ao = new Float32Array(N); { let lo = 1e9, hi = 0; const nb = new Float32Array(N);
+      for (let i = 0; i < N; i++) for (let k = i + 1; k < N; k++){ const dx = P0[i*3] - P0[k*3], dy = P0[i*3+1] - P0[k*3+1], dz = P0[i*3+2] - P0[k*3+2];
+        if (dx*dx + dy*dy + dz*dz < 64){ nb[i]++; nb[k]++; } }
+      for (let i = 0; i < N; i++){ lo = Math.min(lo, nb[i]); hi = Math.max(hi, nb[i]); }
+      for (let i = 0; i < N; i++) ao[i] = 1 - .5 * Math.pow((nb[i] - lo) / (hi - lo), 1.4); }
+    return {N, P0, P1, RAD: d.rad.map(r => r / 10), dom: d.dom, sites: ['A', 'B', 'C'].map(k => d.sites[k]), act: d.act, siteOf, isAct, phase, CC, conform, ao};
   });
   return proteinPromise;
 }
 
-// textbook "Pac-Man" view of adenylate kinase: CORE as the body, LID above and NMP below, the open cleft
-// between them (the mouth) facing right. Returns the rotation that brings the structure into that view.
-export function pacmanView(P){
+// textbook "Pac-Man" view of adenylate kinase: CORE as the body with LID and NMP as the jaws around the open
+// cleft. Returns the rotation that brings the structure into that view.
+export function pacmanView(P, roll = -103 * Math.PI / 180){
   const cen = k => { const c = new THREE.Vector3(); let n = 0; for (let i = 0; i < P.N; i++) if (P.dom[i] === k){ c.x += P.P0[i*3]; c.y += P.P0[i*3+1]; c.z += P.P0[i*3+2]; n++; } return c.divideScalar(n); };
   const core = cen(0), nmp = cen(1), lid = cen(2);
   const u = lid.clone().add(nmp).multiplyScalar(.5).sub(core).normalize();            // body → mouth: screen right
   const v = lid.clone().sub(nmp); v.addScaledVector(u, -v.dot(u)).normalize();          // NMP → LID: screen up
   const w = new THREE.Vector3().crossVectors(u, v);
-  return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(u, v, w).transpose());
+  const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(u, v, w).transpose());
+  // roll in the screen plane; the default matches the client's reference films: CORE on top, NMP left, LID lower right
+  return new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), roll).multiply(q);
 }
 
 // ---------- stage: renderer + bloom, sized to its canvas ----------
@@ -140,6 +148,24 @@ export function makeSurface(res, mat, maxPoly = 150000){
   const mc = new MarchingCubes(res, mat, false, true, maxPoly);
   mc.isolation = 80; mc.frustumCulled = false; mc.scale.setScalar(S_BOX / 2 * K);
   return mc;
+}
+// space-filling (CPK) model: one instanced sphere per heavy atom at its van der Waals radius
+export function makeAtoms(P, {detail = innerWidth < 760 ? [10, 7] : [14, 10]} = {}){
+  const mat = new THREE.MeshStandardMaterial({roughness: .62, metalness: 0, envMapIntensity: .35});
+  const mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, detail[0], detail[1]), mat, P.N);
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); mesh.frustumCulled = false;
+  mesh.setColorAt(0, new THREE.Color()); mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+  return mesh;
+}
+const _m = new THREE.Matrix4(), _c = new THREE.Color();
+// grow: 0..1 sphere size (assembly); colorOf(i) -> [r,g,b] linear; sizeOf(i) -> extra scale (a lit site swells out of its pocket)
+export function fillAtoms(mesh, P, B, colorOf, grow = 1, sizeOf = null){
+  for (let i = 0; i < P.N; i++){
+    const j = i*3, r = P.RAD[i] * K * grow * (sizeOf ? sizeOf(i) : 1);
+    _m.makeScale(r, r, r).setPosition(B[j] * K, B[j+1] * K, B[j+2] * K); mesh.setMatrixAt(i, _m);
+    const c = colorOf(i), a = c[3] ? 1 + c[3] * .6 : P.ao[i]; mesh.setColorAt(i, _c.setRGB(c[0] * a, c[1] * a, c[2] * a));   // c[3]: glow
+  }
+  mesh.instanceMatrix.needsUpdate = true; mesh.instanceColor.needsUpdate = true;
 }
 export const DOM_COLORS = ['#6f7ca6', '#8a80a8', '#5f7fa2'].map(lin);   // muted Allotar palette: slate periwinkle, dusty lavender, steel blue
 // colorOf(i) -> [r,g,b] (linear)

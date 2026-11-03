@@ -113,7 +113,6 @@ html.embed .stage{width:100%}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.min.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
-import {MarchingCubes} from 'three/addons/objects/MarchingCubes.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
 import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
@@ -275,30 +274,35 @@ function makePoints(n){
 const hdr = (hex, k = 1) => { const c = new THREE.Color(hex); return [c.r*k, c.g*k, c.b*k]; };
 const C = {ice: hdr('#9cc0ff', .9), site: hdr('#F2A37C', 2), red: hdr('#ff3b4a', 3.2), teal: hdr('#19d3a8', 3), pass: hdr('#59a8ff', 3), gold: hdr('#ffb067', 3.5), dust: hdr('#9fb8ff', 1.1)};
 
-// ---------- proteins: marching-cubes surfaces ----------
+// ---------- proteins: space-filling spheres (one per heavy atom, van der Waals radius) ----------
 const tgt = new THREE.Group(), off = new THREE.Group(); scene.add(tgt, off);
-const matT = new THREE.MeshPhysicalMaterial({vertexColors: true, roughness: .72, metalness: 0, clearcoat: .08, clearcoatRoughness: .6,
-  envMapIntensity: .3, transparent: true});
-const matO = new THREE.MeshPhysicalMaterial({vertexColors: true, roughness: .7, metalness: 0, clearcoat: .1, clearcoatRoughness: .6,
-  sheen: .1, sheenColor: new THREE.Color('#8a92a8'), sheenRoughness: .5, envMapIntensity: .3, transparent: true, depthWrite: false});
+const matT = new THREE.MeshStandardMaterial({roughness: .62, metalness: 0, envMapIntensity: .35});
+const matO = new THREE.MeshStandardMaterial({roughness: .7, metalness: 0, envMapIntensity: .3});
 const narrow = innerWidth < 480;
-const mcT = new MarchingCubes(narrow ? 46 : 56, matT, false, true, 150000);
-const mcO = new MarchingCubes(narrow ? 34 : 42, matO, false, true, 90000);
-for (const mc of [mcT, mcO]){ mc.isolation = 80; mc.frustumCulled = false; mc.scale.setScalar(S_BOX / 2 * K); }
+function cpk(mat){ const m = new THREE.InstancedMesh(new THREE.SphereGeometry(1, narrow ? 10 : 14, narrow ? 7 : 10), mat, N);
+  m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; m.setColorAt(0, new THREE.Color()); m.instanceColor.setUsage(THREE.DynamicDrawUsage); return m; }
+const mcT = cpk(matT), mcO = cpk(matO);
 tgt.add(mcT); off.add(mcO); off.scale.setScalar(.7);
+// burial shade: atoms with many neighbours within 8 Å are darker, like ambient occlusion
+const AO = new Float32Array(N); { const nb = new Float32Array(N); let lo = 1e9, hi = 0;
+  for (let i = 0; i < N; i++) for (let k = i + 1; k < N; k++){ const dx = P0[i*3] - P0[k*3], dy = P0[i*3+1] - P0[k*3+1], dz = P0[i*3+2] - P0[k*3+2]; if (dx*dx + dy*dy + dz*dz < 64){ nb[i]++; nb[k]++; } }
+  for (let i = 0; i < N; i++){ lo = Math.min(lo, nb[i]); hi = Math.max(hi, nb[i]); }
+  for (let i = 0; i < N; i++) AO[i] = 1 - .5 * Math.pow((nb[i] - lo) / (hi - lo), 1.4); }
+const _m4 = new THREE.Matrix4(), _col = new THREE.Color();
 const lin = h => { const c = new THREE.Color(h); return [c.r, c.g, c.b]; };
 const DOMC = {t: ['#6f7ca6', '#8a80a8', '#5f7fa2'].map(lin), o: ['#5d6478', '#666a7c', '#5a6276'].map(lin)};
 const LC = {site: lin('#F2A37C'), red: lin('#ff3344'), teal: lin('#19d3a8'), pass: lin('#7fb8ff'), dep: lin('#3a4058')};
 const mixc = (a, b, k) => [a[0] + (b[0] - a[0])*k, a[1] + (b[1] - a[1])*k, a[2] + (b[2] - a[2])*k];
-function updateSurface(mc, B, cols, siteCol, actCol){
-  mc.reset();
+function updateSurface(mc, B, cols, siteCol, actCol, grow = 1, dim = 1){
   for (let i = 0; i < N; i++){
-    const j = i*3; let c = cols[PDB.dom[i]]; const si = siteOf[i];
-    if (si >= 0 && siteCol[si][1] > 0) c = mixc(c, siteCol[si][0], siteCol[si][1]);
-    if (isAct[i] && actCol[1] > 0) c = mixc(c, actCol[0], actCol[1]);
-    mc.addBall(B[j]/S_BOX + .5, B[j+1]/S_BOX + .5, B[j+2]/S_BOX + .5, .046 * RAD[i] / 1.7, 14, c);
+    const j = i*3; let c = cols[PDB.dom[i]]; const si = siteOf[i]; let lit = 0;
+    if (si >= 0 && siteCol[si][1] > 0){ c = mixc(c, siteCol[si][0], siteCol[si][1]); lit = siteCol[si][1]; }
+    if (isAct[i] && actCol[1] > 0){ c = mixc(c, actCol[0], actCol[1]); lit = Math.max(lit, actCol[1]); }
+    const r = RAD[i] * K * grow * (1 + .35 * lit), a = (lit ? 1 + lit * .5 : AO[i]) * dim;   // lit atoms swell and skip the shade
+    _m4.makeScale(r, r, r).setPosition(B[j] * K, B[j+1] * K, B[j+2] * K); mc.setMatrixAt(i, _m4);
+    mc.setColorAt(i, _col.setRGB(c[0] * a, c[1] * a, c[2] * a));
   }
-  mc.update();
+  mc.instanceMatrix.needsUpdate = true; mc.instanceColor.needsUpdate = true;
 }
 const atomsT = makePoints(N), atomsO = makePoints(N);
 tgt.add(atomsT.points); off.add(atomsO.points);
@@ -546,9 +550,9 @@ function update(t){
     offCol.push(ored > .01 ? [LC.red, ored] : [LC.pass, opass * .6]);
   }
   act = Math.min(act, 1.6) * fo;
-  if (surfT > .005){ updateSurface(mcT, BT, DOMC.t, siteCol, actRed > .02 ? [LC.red, actRed * .8] : [LC.teal, Math.min(act, 1) * .85]); }
-  if (surfO > .005){ updateSurface(mcO, BO, DOMC.o, offCol, [LC.teal, 0]); }
-  mcT.visible = surfT > .005; mcO.visible = surfO > .005; matT.opacity = surfT; matO.opacity = surfO * .4;
+  if (surfT > .005){ updateSurface(mcT, BT, DOMC.t, siteCol, actRed > .02 ? [LC.red, actRed * .8] : [LC.teal, Math.min(act, 1) * .85], surfT); }
+  if (surfO > .005){ updateSurface(mcO, BO, DOMC.o, offCol, [LC.teal, 0], surfO, .55); }   // off-target: same model, dimmer
+  mcT.visible = surfT > .005; mcO.visible = surfO > .005;
 
   // atom glow layers (also the assembly animation)
   for (const [L, B, isT] of [[atomsT, BT, true], [atomsO, BO, false]]){

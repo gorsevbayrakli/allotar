@@ -481,6 +481,7 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   .words .row .cap{grid-row:3}
 }
 @media (max-width:560px){
+  .frame .corner.tl + .corner.tr{top:40px;right:auto;left:24px}   /* two top labels stack instead of colliding */
   .scroll-cue{display:none}
   :root{--gut:24px;--s-sec:88px;--s-split:40px;--s-cta:120px;--s-row:64px;--s-prog:32px;--s-tail:40px;--s-slide:24px}
   .stages{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;font-size:10.5px;hyphens:auto}

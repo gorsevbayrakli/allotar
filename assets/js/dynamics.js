@@ -1,6 +1,6 @@
 // Ultra-fast dynamics sampling: the protein switches between open and closed states while a marker
 // crosses the free-energy landscape below it, over the transition state.
-import {THREE, createStage, makePoints, makeSurface, proteinMaterial, fillSurface, loadProtein, pacmanView, animate, clamp, ease, prog, hdr, lin, K, DOM_COLORS, toScreen} from './gl.js';
+import {THREE, createStage, makePoints, makeAtoms, fillAtoms, loadProtein, pacmanView, animate, clamp, ease, prog, hdr, lin, K, DOM_COLORS, toScreen} from './gl.js';
 
 const BX = 1.7;   // basin x positions (open at -BX, closed at +BX)
 const energy = (x, z) => -1.0 * Math.exp(-((x + BX) ** 2 / .9 + z * z / .8)) - .9 * Math.exp(-((x - BX) ** 2 / .8 + z * z / .7))
@@ -50,7 +50,7 @@ export async function initDynamics(root){
   const P = await loadProtein();
   const group = new THREE.Group(); group.scale.setScalar(.78); group.position.y = .55; scene.add(group);
   const pivot = new THREE.Group(); pivot.quaternion.copy(pacmanView(P)); group.add(pivot);
-  const mc = makeSurface(innerWidth < 760 ? 40 : 50, proteinMaterial()); pivot.add(mc);
+  const mc = makeAtoms(P); pivot.add(mc);
   const atoms = makePoints(P.N, S.glow); pivot.add(atoms.points);
   const fx = makePoints(400, S.glow); scene.add(fx.points);
   const B = new Float32Array(P.N * 3);
@@ -65,7 +65,7 @@ export async function initDynamics(root){
     const lam = lamAt(t), closed = clamp((lam - .5) * 3 + .5);
     P.conform(B, t, lam);
     group.rotation.y = .3 * Math.sin(t * .3); group.rotation.x = .05;   // sway, so the Pac-Man view stays readable
-    fillSurface(mc, P, B, i => { const c = DOM_COLORS[P.dom[i]]; if (!P.isAct[i]) return c; const k = closed * .8; return [c[0] + (TEAL[0] - c[0]) * k, c[1] + (TEAL[1] - c[1]) * k, c[2] + (TEAL[2] - c[2]) * k]; });
+    fillAtoms(mc, P, B, i => { const c = DOM_COLORS[P.dom[i]]; if (!P.isAct[i]) return c; const k = closed * .8; return [c[0] + (TEAL[0] - c[0]) * k, c[1] + (TEAL[1] - c[1]) * k, c[2] + (TEAL[2] - c[2]) * k]; });
     atoms.n = 0;
     for (let i = 0; i < P.N; i++){
       const j = i*3, act = P.isAct[i];
