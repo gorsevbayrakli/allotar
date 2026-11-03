@@ -34,16 +34,16 @@ export function initSelmap(root){
     const fade = 1 - clamp((t - (LOOP - .6)) / .6);   // soft reset at the end of the loop
     ctx.clearRect(0, 0, W, H);
     ctx.globalAlpha = 1;
-    const pad = W < 420 ? 16 : 28, labW = W < 420 ? 54 : 74, barW = W < 420 ? 64 : 104;
-    const gx = pad + labW, gw = W - gx - barW - pad, cw = gw / COLS.length, gap = 5;
+    const pad = W < 420 ? 16 : 32, labW = W < 420 ? 56 : 72, barW = W < 420 ? 64 : 104;
+    const gx = pad + labW, gw = W - gx - barW - pad, cw = gw / COLS.length, gap = 4;
     const ch = Math.min(cw * .95, (H - 150) / DATA.length - gap);
-    const top = Math.max(58, (H - 64 - DATA.length * (ch + gap)) / 2 + 12);   // grid centred above the step row
+    const top = Math.max(56, (H - 64 - DATA.length * (ch + gap)) / 2 + 12);   // grid centred above the step row
 
     // headers
     ctx.font = MONO; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-    COLS.forEach((c, j) => { ctx.fillStyle = j ? DIM : PEACH; ctx.fillText(W < 420 && j ? c.replace('OT-', '') : c.toUpperCase(), gx + cw * (j + .5), top - 12); });
-    ctx.textAlign = 'left'; ctx.fillStyle = DIM; ctx.fillText(W < 420 ? 'SEL.' : 'SELECTIVITY', gx + gw + 14, top - 12);
-    ctx.fillStyle = DIM; ctx.fillText('ROUND', pad, top - 12);
+    COLS.forEach((c, j) => { ctx.fillStyle = j ? DIM : PEACH; ctx.fillText(W < 420 && j ? c.replace('OT-', '') : c.toUpperCase(), gx + cw * (j + .5), top - 16); });
+    ctx.textAlign = 'left'; ctx.fillStyle = DIM; ctx.fillText(W < 420 ? 'SEL.' : 'SELECTIVITY', gx + gw + 16, top - 16);
+    ctx.fillStyle = DIM; ctx.fillText('ROUND', pad, top - 16);
 
     const cur = Math.min(DATA.length - 1, Math.floor(t / ROW_T)), done = t >= DATA.length * ROW_T;
     DATA.forEach((row, i) => {
@@ -72,7 +72,7 @@ export function initSelmap(root){
         ctx.globalAlpha = 1;
       });
       // selectivity bar
-      const s = clamp((local - 2) / .8), rat = ratio(row), bx = gx + gw + 14, bw = barW - 14 - (W < 420 ? 0 : 34);
+      const s = clamp((local - 2) / .8), rat = ratio(row), bx = gx + gw + 16, bw = barW - 16 - (W < 420 ? 0 : 32);
       ctx.globalAlpha = fade;
       ctx.fillStyle = 'rgba(27,37,89,.06)'; rr(bx, y + ch / 2 - 3, bw, 6, 3); ctx.fill();
       if (s > 0){
@@ -92,7 +92,7 @@ export function initSelmap(root){
 
     // what is happening now (the four cards below the map name the steps)
     const local = t - cur * ROW_T, step = done ? -1 : local < .6 ? 0 : local < 1.2 ? 1 : local < 2.2 ? 2 : 3;
-    const sy = H - 30;
+    const sy = H - 32;
     ctx.globalAlpha = fade; ctx.font = MONO; ctx.textAlign = 'left'; ctx.fillStyle = INK;
     ctx.fillText(done ? 'Off-target binding designed out' : `Round ${cur + 1} · ${['designing for the target site', 'building the candidate', 'binding measured on 6 proteins', 'off-target hits feed the next design'][step]}`, pad, sy);
     ctx.globalAlpha = 1; ctx.fillStyle = DIM; ctx.textAlign = 'right'; ctx.fillText(W < 420 ? 'Illustrative' : 'Illustrative values', W - pad, sy);
