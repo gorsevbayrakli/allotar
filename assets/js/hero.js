@@ -3,7 +3,7 @@
 // stays until the loop ends. First the deepest well fills, then samples appear along the minimum path, partly
 // filling each small local minimum on the way before moving on, and fill the second-deepest well (forward,
 // yellow); the way back runs along a different route through its own local minima (backward, blue). Scrolling dissolves the protein surface into its atoms.
-import {THREE, createStage, makePoints, makeSurface, proteinMaterial, fillSurface, loadProtein, animate, clamp, ease, prog, rng, hdr, lin, rgb, K, DOM_COLORS} from './gl.js';
+import {THREE, createStage, makePoints, makeSurface, proteinMaterial, fillSurface, loadProtein, pacmanView, animate, clamp, ease, prog, rng, hdr, lin, rgb, K, DOM_COLORS} from './gl.js';
 
 // ---------- landscape (same function on the GPU and the CPU) ----------
 const BASE_Y = -2.6, AMP = .75;
@@ -116,8 +116,9 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
   if (mode === 'protein'){
     P = await loadProtein();
     group = new THREE.Group(); scene.add(group);
-    mc = makeSurface(innerWidth < 760 ? 42 : 54, proteinMaterial()); group.add(mc);
-    atoms = makePoints(P.N, S.glow); group.add(atoms.points);
+    const pivot = new THREE.Group(); pivot.quaternion.copy(pacmanView(P)); group.add(pivot);
+    mc = makeSurface(innerWidth < 760 ? 42 : 54, proteinMaterial()); pivot.add(mc);
+    atoms = makePoints(P.N, S.glow); pivot.add(atoms.points);
     B = new Float32Array(P.N * 3); SCAT = new Float32Array(P.N * 3);
     const r = rng(7);
     for (let i = 0; i < P.N; i++){ const u = r()*2 - 1, th = r()*6.283, s = Math.sqrt(1 - u*u), d = 50 + r()*110;
@@ -153,7 +154,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
       const a = ease(prog(t, .3, 2.8)), surf = ease(prog(t, 1.6, 1.6)) * (1 - p * .95);
       P.conform(B, t, .35 - .35 * Math.cos(2 * Math.PI * t / 7));
       group.position.set(narrow ? .4 : 3.4, narrow ? 2.5 + p * 1.2 : .45 + p * 1.2, 0); group.scale.setScalar(narrow ? (S.w < 600 ? .7 : .85) : 1);
-      group.rotation.set(.15 + my * .2, t * .08 + p * 1.6 + mx * .5, 0);
+      group.rotation.set(my * .15, .3 * Math.sin(t * .25) + p * 1.6 + mx * .35, 0);   // gentle sway keeps the Pac-Man view
       const lit = Math.floor(t / 3.2) % 3, litK = Math.sin(Math.PI * ((t / 3.2) % 1)) * prog(t, 3, 1);
       if (surf > .005){
         fillSurface(mc, P, B, i => { const c = DOM_COLORS[P.dom[i]]; const k = P.siteOf[i] === lit ? litK * .85 : 0; return k ? [c[0] + (SITE[0] - c[0]) * k, c[1] + (SITE[1] - c[1]) * k, c[2] + (SITE[2] - c[2]) * k] : c; });

@@ -3,14 +3,13 @@
 import {animate, clamp, ease, REDUCED} from './gl.js';
 
 const COLS = ['Target', 'OT-1', 'OT-2', 'OT-3', 'OT-4', 'OT-5'];
-// illustrative binding strengths (0–1), one row per design round
+// illustrative binding strengths (0–1), one row per design round; the card says so under the map
 const DATA = [
   [.72, .55, .62, .30, .48, .20],
-  [.80, .40, .35, .22, .30, .15],
-  [.86, .22, .18, .12, .16, .10],
-  [.91, .08, .06, .05, .07, .04],
+  [.88, .40, .35, .22, .30, .15],
+  [.90, .22, .18, .12, .16, .10],
+  [.93, .08, .06, .05, .07, .04],
 ];
-const STEPS = ['Design', 'Build', 'Test', 'Learn'];
 const ROW_T = 3.2, HOLD = 3, LOOP = DATA.length * ROW_T + HOLD;
 const MONO = "500 10px 'JetBrains Mono', monospace", SANS = "600 13px 'Raleway', sans-serif";
 const INK = '#141a4b', DIM = '#6e7493', LINE = 'rgba(27,37,89,.1)', PEACH = '#e9783f', ACCENT = '#4656c8';
@@ -91,19 +90,12 @@ export function initSelmap(root){
       ctx.font = SANS; ctx.fillStyle = PEACH; ctx.textAlign = 'right'; ctx.fillText('Selective hit', gx + gw - gap, y + ch + 24); ctx.textAlign = 'left'; ctx.globalAlpha = 1;
     }
 
-    // step indicator
+    // what is happening now (the four cards below the map name the steps)
     const local = t - cur * ROW_T, step = done ? -1 : local < .6 ? 0 : local < 1.2 ? 1 : local < 2.2 ? 2 : 3;
-    const sy = H - 44; let sx = pad;
-    ctx.font = MONO;
-    STEPS.forEach((st, i) => {
-      const w = ctx.measureText(st.toUpperCase()).width + 24, on = i === step;
-      ctx.globalAlpha = fade; ctx.fillStyle = on ? INK : 'rgba(27,37,89,.05)'; rr(sx, sy - 15, w, 26, 13); ctx.fill();
-      ctx.fillStyle = on ? '#fff' : DIM; ctx.fillText(st.toUpperCase(), sx + 12, sy + 2);
-      sx += w + 8;
-    });
-    ctx.globalAlpha = fade; ctx.fillStyle = DIM; ctx.textAlign = 'right';
-    const cap = done ? 'Off-target binding designed out' : `Round ${cur + 1} · ${['designing for the target site', 'building the candidate', 'binding measured on 6 proteins', 'off-target hits feed the next design'][step]}`;
-    if (W >= 520) ctx.fillText(cap, W - pad, sy + 2);
+    const sy = H - 30;
+    ctx.globalAlpha = fade; ctx.font = MONO; ctx.textAlign = 'left'; ctx.fillStyle = INK;
+    ctx.fillText(done ? 'Off-target binding designed out' : `Round ${cur + 1} · ${['designing for the target site', 'building the candidate', 'binding measured on 6 proteins', 'off-target hits feed the next design'][step]}`, pad, sy);
+    ctx.globalAlpha = 1; ctx.fillStyle = DIM; ctx.textAlign = 'right'; ctx.fillText(W < 420 ? 'Illustrative' : 'Illustrative values', W - pad, sy);
     ctx.textAlign = 'left'; ctx.globalAlpha = 1;
   });
 }

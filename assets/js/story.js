@@ -1,6 +1,6 @@
 // Pinned protein for the home page story: while the text panels scroll past, the protein drifts from side
 // to side, closes from the open (4AKE) to the closed (1AKE) state, and finally lights up its allosteric site.
-import {THREE, createStage, makeSurface, proteinMaterial, fillSurface, loadProtein, animate, clamp, ease, lerp, lin, DOM_COLORS} from './gl.js';
+import {THREE, createStage, makeSurface, proteinMaterial, fillSurface, loadProtein, pacmanView, animate, clamp, ease, lerp, lin, DOM_COLORS} from './gl.js';
 
 export async function initStory(canvas){
   const section = canvas.closest('[data-story]');
@@ -12,7 +12,8 @@ export async function initStory(canvas){
 
   const P = await loadProtein();
   const group = new THREE.Group(); scene.add(group);
-  const mc = makeSurface(innerWidth < 760 ? 40 : 52, proteinMaterial()); group.add(mc);
+  const pivot = new THREE.Group(); pivot.quaternion.copy(pacmanView(P)); group.add(pivot);
+  const mc = makeSurface(innerWidth < 760 ? 40 : 52, proteinMaterial()); pivot.add(mc);
   mc.material.opacity = 1;
   const B = new Float32Array(P.N * 3), SITE = lin('#F2A37C');
 
@@ -34,7 +35,7 @@ export async function initStory(canvas){
     fillSurface(mc, P, B, i => { const c = DOM_COLORS[P.dom[i]]; const s = P.siteOf[i] === 0 ? pulse : 0;
       return s ? [lerp(c[0], SITE[0], s), lerp(c[1], SITE[1], s), lerp(c[2], SITE[2], s)] : c; });
     group.position.set(x, narrow ? 1.2 : 0, 0);
-    group.rotation.set(.2, t * .12 + p * 2.4 + mx * .4, 0);
+    group.rotation.set(.05, .3 * Math.sin(t * .3) + mx * .3, 0);
     camera.position.set(0, .6, narrow ? 17 : 13);
     camera.lookAt(0, 0, 0);
     S.render();

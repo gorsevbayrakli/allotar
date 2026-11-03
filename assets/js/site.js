@@ -7,7 +7,7 @@ const store = {get(k){ try { return sessionStorage.getItem(k); } catch { return 
 // ---------- loader (first page of the visit only) ----------
 const loader = $('.loader');
 if (loader){
-  if (store.get('seen') || REDUCED) loader.remove();
+  if (store.get('seen') || REDUCED || innerWidth < 760) loader.remove();   // phones go straight to the page
   else {
     store.set('seen', 1);
     const pct = $('.pct', loader), bar = $('.bar i', loader), t0 = performance.now();
@@ -90,6 +90,8 @@ const splitHeading = h => {
   h.innerHTML = lines.map((l, i) => `<span class="split-line"><span style="transition-delay:${i * .09}s">${l.join(' ')}</span></span>`).join('');
 };
 // measure lines only once the web fonts are in, otherwise the breaks are wrong
+// on phones the hero text shows at once: no line-by-line entrance while the page is still loading
+if (innerWidth < 760) $$('.hero [data-split], .hero [data-reveal]').forEach(el => { el.removeAttribute('data-split'); el.removeAttribute('data-reveal'); });
 const splits = $$('[data-split]'); splits.forEach(h => h.dataset.html = h.innerHTML);
 (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => splits.forEach(splitHeading));
 let splitW = innerWidth;

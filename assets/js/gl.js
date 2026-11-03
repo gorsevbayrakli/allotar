@@ -41,6 +41,17 @@ export function loadProtein(){
   return proteinPromise;
 }
 
+// textbook "Pac-Man" view of adenylate kinase: CORE as the body, LID above and NMP below, the open cleft
+// between them (the mouth) facing right. Returns the rotation that brings the structure into that view.
+export function pacmanView(P){
+  const cen = k => { const c = new THREE.Vector3(); let n = 0; for (let i = 0; i < P.N; i++) if (P.dom[i] === k){ c.x += P.P0[i*3]; c.y += P.P0[i*3+1]; c.z += P.P0[i*3+2]; n++; } return c.divideScalar(n); };
+  const core = cen(0), nmp = cen(1), lid = cen(2);
+  const u = lid.clone().add(nmp).multiplyScalar(.5).sub(core).normalize();            // body → mouth: screen right
+  const v = lid.clone().sub(nmp); v.addScaledVector(u, -v.dot(u)).normalize();          // NMP → LID: screen up
+  const w = new THREE.Vector3().crossVectors(u, v);
+  return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(u, v, w).transpose());
+}
+
 // ---------- stage: renderer + bloom, sized to its canvas ----------
 // light: transparent canvas over a light page, no bloom, glow points drawn as soft opaque dots
 export function createStage(canvas, {bloom = [.55, .7, .82], exposure = .85, fog = .022, bg = '#0a1030', fov = 32, env = true, light = false} = {}){
