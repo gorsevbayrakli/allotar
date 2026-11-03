@@ -1,32 +1,57 @@
-// Ultra-fast dynamics sampling: the protein switches between open and closed states while a marker
-// crosses the free-energy landscape below it, over the transition state.
-import {THREE, createStage, makePoints, makeAtoms, fillAtoms, loadProtein, pacmanView, animate, clamp, ease, prog, hdr, lin, K, DOM_COLORS, toScreen} from './gl.js';
+// Ultra-fast dynamics sampling: a rendered film of the protein folding from open to closed, then shifting
+// into a shallower third state, while a marker follows the same path across the free-energy landscape.
+// The film plays on its own transparent layer (white keyed out) so its colours stay exact; the landscape
+// and marker are read from the film's own clock, so the two never drift apart.
+import {THREE, createStage, makePoints, animate, clamp, ease, hdr, toScreen} from './gl.js';
 
-const BX = 1.7;   // basin x positions (open at -BX, closed at +BX)
-const energy = (x, z) => -1.0 * Math.exp(-((x + BX) ** 2 / .9 + z * z / .8)) - .9 * Math.exp(-((x - BX) ** 2 / .8 + z * z / .7))
-  + .25 * Math.exp(-(x * x / .5 + (z - .1) ** 2 / 2)) + .05 * Math.sin(x * 3.1 + z * 2.3);
+// three basins along the path: open and closed are the deepest, the shifted state is shallower
+const XO = -2.15, XC = 0, XA = 2.15;
+const g = (x, z, cx, sx, sz) => Math.exp(-((x - cx) ** 2 / sx + z * z / sz));
+const energy = (x, z) => -1.0 * g(x, z, XO, .55, .8) - .95 * g(x, z, XC, .55, .75) - .55 * g(x, z, XA, .5, .7)
+  + .04 * Math.sin(x * 3.1 + z * 2.3);
+const TS1 = (XO + XC) / 2, TS2 = (XC + XA) / 2;   // barriers between the basins
 
-// conformational coordinate over an 8 s cycle: dwell open, cross, dwell closed, cross back
-function lamAt(t){
-  const c = t % 8, j = .04 * Math.sin(t * 5.3) + .03 * Math.sin(t * 8.1);
-  if (c < 2.5) return .04 + j;
-  if (c < 4) return .04 + .92 * ease((c - 2.5) / 1.5);
-  if (c < 6.5) return .96 + j;
-  return .96 - .92 * ease((c - 6.5) / 1.5);
+// the film's timeline (seconds): open → closes → closed → shifts → shifted → back → closed → opens
+const FILM = [[0, XO], [.4, XO], [1.8, XC], [4.4, XC], [5.8, XA], [7.2, XA], [8.6, XC], [11.2, XC], [12.8, XO]];
+function pathX(t){
+  for (let i = 1; i < FILM.length; i++){ const [t1, x1] = FILM[i], [t0, x0] = FILM[i - 1]; if (t <= t1) return x0 + (x1 - x0) * ease((t - t0) / (t1 - t0 || 1)); }
+  return XO;
+}
+
+// film layer: the video drawn through a shader that turns the white background transparent
+function filmLayer(canvas){
+  const video = Object.assign(document.createElement('video'), {muted: true, loop: true, playsInline: true, preload: 'auto', crossOrigin: 'anonymous'});
+  video.setAttribute('muted', ''); video.setAttribute('playsinline', '');
+  video.src = new URL('../video/dynamics-o2c.mp4', import.meta.url).href;
+  const renderer = new THREE.WebGLRenderer({canvas, alpha: true, antialias: false, premultipliedAlpha: true});
+  renderer.setClearColor(0x000000, 0);
+  const tex = new THREE.VideoTexture(video); tex.colorSpace = THREE.NoColorSpace; tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+  const scene = new THREE.Scene(), cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+    uniforms: {map: {value: tex}}, transparent: true,
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }`,
+    fragmentShader: `uniform sampler2D map; varying vec2 vUv;
+      void main(){
+        vec3 c = texture2D(map, vUv).rgb;
+        float a = 1. - smoothstep(.9, .985, min(min(c.r, c.g), c.b));   // the film's background is pure white
+        vec3 fg = clamp((c - (1. - a)) / max(a, .001), 0., 1.);           // un-mix the white from soft edges
+        gl_FragColor = vec4(fg * a, a);
+      }`
+  })));
+  const size = () => { const r = canvas.getBoundingClientRect(), d = Math.min(devicePixelRatio || 1, 2); renderer.setPixelRatio(d); renderer.setSize(r.width, r.height, false); };
+  new ResizeObserver(size).observe(canvas); size();
+  return {video, draw: () => { if (video.readyState >= 2) renderer.render(scene, cam); }};
 }
 
 export async function initDynamics(root){
-  const canvas = root.querySelector('canvas');
-  const lbl = {open: root.querySelector('[data-l=open]'), closed: root.querySelector('[data-l=closed]'), ts: root.querySelector('[data-l=ts]')};
-  const clock = root.querySelector('[data-clock]');
+  const canvas = root.querySelector('canvas:not(.dyn-vid)');
+  const film = filmLayer(root.querySelector('.dyn-vid'));
+  const lbl = {open: root.querySelector('[data-l=open]'), closed: root.querySelector('[data-l=closed]'), alt: root.querySelector('[data-l=alt]'), ts: root.querySelector('[data-l=ts]')};
   const S = createStage(canvas, {bloom: [.3, .55, .93], exposure: .85, fog: 0, fov: 30});
   const {scene, camera} = S;
-  scene.add(new THREE.HemisphereLight(0xdfe4f2, 0x1a1f33, .4));
-  const key = new THREE.DirectionalLight(0xfff3e8, 1.35); key.position.set(-4, 6, 8); scene.add(key);
-  const rim = new THREE.DirectionalLight(0xaab6d6, 1.1); rim.position.set(5, -2, -6); scene.add(rim);
 
   // free-energy landscape with glowing contour grid
-  const geo = new THREE.PlaneGeometry(7, 3.6, 140, 72); geo.rotateX(-Math.PI / 2);
+  const geo = new THREE.PlaneGeometry(7, 3.6, 160, 72); geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) pos.setY(i, energy(pos.getX(i), pos.getZ(i)));
   geo.computeVertexNormals();
@@ -40,41 +65,26 @@ export async function initDynamics(root){
         vec2 g = abs(fract(vP.xz * 3.) - .5) / fwidth(vP.xz * 3.);
         float grid = 1. - min(min(g.x, g.y), 1.);
         float iso = 1. - min(abs(fract(vP.y * 7.) - .5) / fwidth(vP.y * 7.), 1.);
-        float edge = smoothstep(3.5, 2.6, abs(vP.x)) * smoothstep(1.8, 1.2, abs(vP.z));
+        float edge = smoothstep(3.5, 2.8, abs(vP.x)) * smoothstep(1.8, 1.2, abs(vP.z));
         vec3 c = base * (.06 + .5 * grid + .9 * iso);
         gl_FragColor = vec4(c * edge, edge * (.25 + .6 * max(grid, iso)));
       }`
   }));
   land.position.y = -1.55; scene.add(land);
 
-  const P = await loadProtein();
-  const group = new THREE.Group(); group.scale.setScalar(.78); group.position.y = .55; scene.add(group);
-  const pivot = new THREE.Group(); pivot.quaternion.copy(pacmanView(P)); group.add(pivot);
-  const mc = makeAtoms(P); pivot.add(mc);
-  const atoms = makePoints(P.N, S.glow); pivot.add(atoms.points);
   const fx = makePoints(400, S.glow); scene.add(fx.points);
-  const B = new Float32Array(P.N * 3);
-  const TEAL = lin('#19d3a8'), C_TEAL = hdr('#19d3a8', 3), C_ICE = hdr('#9cc0ff', .9), C_BALL = hdr('#ffd38a', 4), C_TRAIL = hdr('#ff9a62', 2.2);
+  const C_BALL = hdr('#ffd38a', 4), C_TRAIL = hdr('#ff9a62', 2.2);
   const trail = [];
 
-  let mx = 0, tmx = 0, simMs = 0;
+  // play only while the card is on screen
+  new IntersectionObserver(([e]) => { if (e.isIntersecting) film.video.play().catch(() => {}); else film.video.pause(); }).observe(root);
+
+  let mx = 0, tmx = 0;
   root.addEventListener('pointermove', e => { const b = root.getBoundingClientRect(); tmx = (e.clientX - b.left) / b.width - .5; });
 
-  animate(root, (dt, t) => {
+  animate(root, dt => {
     mx += (tmx - mx) * Math.min(1, dt * 3);
-    const lam = lamAt(t), closed = clamp((lam - .5) * 3 + .5);
-    P.conform(B, t, lam);
-    group.rotation.y = .3 * Math.sin(t * .3); group.rotation.x = .05;   // sway, so the Pac-Man view stays readable
-    fillAtoms(mc, P, B, i => { const c = DOM_COLORS[P.dom[i]]; if (!P.isAct[i]) return c; const k = closed * .8; return [c[0] + (TEAL[0] - c[0]) * k, c[1] + (TEAL[1] - c[1]) * k, c[2] + (TEAL[2] - c[2]) * k]; });
-    atoms.n = 0;
-    for (let i = 0; i < P.N; i++){
-      const j = i*3, act = P.isAct[i];
-      atoms.push(B[j] * K, B[j+1] * K, B[j+2] * K, act ? C_TEAL : C_ICE, act ? .25 * closed : .02 + .03 * Math.sin(t * 3 + P.phase[i] * 3), act ? .14 : .05);
-    }
-    atoms.flush();
-
-    // marker on the landscape
-    const x = -BX + 2 * BX * lam, z = .35 * Math.sin(Math.PI * lam), y = energy(x, z) - 1.55 + .1;
+    const vt = film.video.currentTime || 0, x = pathX(vt), z = .3 * Math.sin(Math.PI * (x - XO) / (XC - XO)) * (x < XC ? 1 : 0), y = energy(x, z) - 1.55 + .1;
     trail.unshift([x, y, z]); if (trail.length > 60) trail.pop();
     fx.n = 0;
     fx.push(x, y, z, C_BALL, 1, .32);
@@ -83,12 +93,15 @@ export async function initDynamics(root){
 
     camera.position.set(mx * 2.2, 2.1, 9.2); camera.lookAt(0, -.25, 0);
     const place = (el, wx, wy, wz, a) => { const p = toScreen(new THREE.Vector3(wx, wy, wz), camera, S.w, S.h); el.style.transform = `translate(${p.x}px,${p.y}px) translate(-50%,-50%)`; el.style.opacity = a; };
-    const crossing = Math.sin(Math.PI * clamp((lam - .15) / .7));
-    place(lbl.open, -BX, -1.55 + energy(-BX, 0) - .3, .9, .5 + .5 * (1 - closed));
-    place(lbl.closed, BX, -1.55 + energy(BX, 0) - .3, .9, .5 + .5 * closed);
-    place(lbl.ts, 0, -1.55 + energy(0, .1) + .45, .2, crossing);
-    simMs += dt * .37;
-    clock.textContent = simMs.toFixed(3).padStart(7, '0');
+    const near = cx => clamp(1 - Math.abs(x - cx) / 1.2);
+    // the barrier label shows over whichever barrier the marker is crossing
+    const tsx = x < XC ? TS1 : TS2, crossing = Math.sin(Math.PI * clamp(x < XC ? (x - XO) / (XC - XO) : (x - XC) / (XA - XC))) * (Math.abs(x - XC) > .05 ? 1 : 0);
+    // state labels float just behind the rim of each basin, so they stay inside the card
+    place(lbl.open, XO, -1.35, -1.25, .45 + .55 * near(XO));
+    place(lbl.closed, XC, -1.35, -1.25, .45 + .55 * near(XC));
+    place(lbl.alt, XA, -1.35, -1.25, .45 + .55 * near(XA));
+    place(lbl.ts, tsx, -1.55 + energy(tsx, .1) + .45, .2, crossing);
     S.render();
+    film.draw();
   });
 }

@@ -74,7 +74,8 @@ export function createStage(canvas, {bloom = [.55, .7, .82], exposure = .85, fog
   }
   const camera = new THREE.PerspectiveCamera(fov, 1, .1, 300);
   if (env){ const pm = new THREE.PMREMGenerator(renderer); scene.environment = pm.fromScene(new RoomEnvironment(), .04).texture; }
-  const composer = light ? null : new EffectComposer(renderer);
+  // 4× MSAA on the composer's target: without it the post-processed scenes render with jagged edges
+  const composer = light ? null : new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, {type: THREE.HalfFloatType, samples: 4}));
   if (composer){
     composer.addPass(new RenderPass(scene, camera));
     if (bloom) composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), ...bloom));

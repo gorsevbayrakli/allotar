@@ -248,8 +248,8 @@ section{position:relative}
 /* engine */
 .engine{aspect-ratio:1/1;width:100%;max-width:600px;margin:0 auto}
 .engine-core{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;z-index:2;pointer-events:none}
-.engine-core b{display:block;font-size:22px;font-weight:600;letter-spacing:-.01em}
-.engine-core span{font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.engine-core b{display:block;font-size:18px;font-weight:600;letter-spacing:-.01em;margin-bottom:4px}
+.engine-core span{display:block;font-family:var(--mono);font-size:8px;line-height:1.6;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
 .engine-node{position:absolute;left:0;top:0;z-index:3;padding:12px 16px;border-radius:12px;text-align:center;background:rgba(10,14,30,.7);border:1px solid var(--line);
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:border-color .5s,box-shadow .5s,background .5s;white-space:nowrap}
 .engine-node small{display:block;font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
@@ -265,7 +265,8 @@ section{position:relative}
 .dyn{aspect-ratio:1.05/1}
 .dyn [data-l]{position:absolute;left:0;top:0;z-index:2;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--soft);white-space:nowrap;transition:opacity .3s}
 .dyn [data-l=ts]{color:var(--gold)}
-.dyn .clock{font-variant-numeric:tabular-nums}
+/* the protein film sits on its own transparent layer above the landscape (white keyed out in WebGL) */
+.dyn .dyn-vid{position:absolute;left:50%;top:6%;height:58%;width:auto;aspect-ratio:560/846;transform:translateX(-50%);z-index:1;pointer-events:none}
 .speed{display:inline-flex;align-items:baseline;gap:8px;padding:4px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--card);color:var(--ink)}
 
 /* allosteric */
@@ -296,6 +297,11 @@ section{position:relative}
 /* steps */
 .steps{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:40px}
 .steps .card{padding:24px}
+/* Platform: the four step cards light up with the engine ring (and drive it on hover) */
+.steps-linked .step{cursor:default;transition:opacity 1.1s cubic-bezier(.2,.7,.2,1),transform .5s cubic-bezier(.2,.7,.2,1),border-color .5s,box-shadow .5s}
+.steps-linked .step.in{transition-delay:0s}
+.steps-linked .step.on{transform:translateY(-8px);border-color:color-mix(in srgb,var(--c) 55%,transparent);box-shadow:0 24px 48px -24px color-mix(in srgb,var(--c) 70%,transparent)}
+.engine-node{cursor:pointer;pointer-events:auto}
 .badge{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;padding:8px 12px;border-radius:8px;margin-bottom:16px;color:#fff;background:var(--c)}
 
 /* news */
@@ -493,7 +499,7 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   .hero .btns{flex-direction:column;align-items:stretch}
   .hero .btns .btn{justify-content:space-between}
   .engine-node{padding:8px 12px;border-radius:9px} .engine-node b{font-size:13px} .engine-node small{font-size:7px;letter-spacing:.1em}
-  .engine-core b{font-size:16px} .engine-core span{font-size:7.5px}
+  .engine-core b{font-size:13px;margin-bottom:2px} .engine-core span{font-size:6.5px;letter-spacing:.08em}
   .allo{aspect-ratio:.62} .allo button{top:12px;bottom:auto;right:12px}
   .grid3,.grid4,.stats,.people,.foot{grid-template-columns:1fr}
   .stats > div{border-left:0;border-top:1px solid var(--line)}
@@ -506,3 +512,6 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
 .doc .btn{text-decoration:none}
 /* lists end without a closing rule under the last row */
 .pubs li:last-child a,.news article:last-child,.program:last-child{border-bottom:0}
+.words .row:last-child{margin-bottom:0}
+.sec.words{padding-bottom:var(--s-tail)}   /* the collage ends on a caption; a full section pad below it read as a gap */
+.split:has(.selmap){align-items:start}   /* heading starts level with the top of the selectivity map */
