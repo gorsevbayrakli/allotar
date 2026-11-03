@@ -502,3 +502,5 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
 
 @media (max-height:720px){.scroll-cue{display:none}}
 .doc .btn{text-decoration:none}
+/* lists end without a closing rule under the last row */
+.pubs li:last-child a,.news article:last-child,.program:last-child{border-bottom:0}
