@@ -127,6 +127,9 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
   const SITE = lin('#F2A37C'), C_SITE = light ? rgb('#e9783f') : hdr('#F2A37C', 1.8), C_ICE = light ? rgb('#5b6aa3') : hdr('#9cc0ff', .9);
 
   let scrollP = 0, mx = 0, my = 0, tmx = 0, tmy = 0;
+  // phones: keep the protein inside the band between the nav and the headline, whatever the screen height
+  const h1 = canvas.closest('.hero')?.querySelector('h1'), V = new THREE.Vector3();
+  let fitY = 2.5, fitS = .7;
   addEventListener('scroll', () => { scrollP = clamp(scrollY / innerHeight); }, {passive: true});
   addEventListener('pointermove', e => { tmx = e.clientX / innerWidth - .5; tmy = e.clientY / innerHeight - .5; });
 
@@ -153,7 +156,17 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
     if (P){
       const a = ease(prog(t, .3, 2.8)), surf = ease(prog(t, 1.6, 1.6)) * (1 - p * .95);
       P.conform(B, t, .35 - .35 * Math.cos(2 * Math.PI * t / 7));
-      group.position.set(narrow ? .4 : 3.4, narrow ? 2.5 + p * 1.2 : .45 + p * 1.2, 0); group.scale.setScalar(narrow ? (S.w < 600 ? .7 : .85) : 1);
+      const phone = S.w < 760 && h1;
+      const dist = camera.position.distanceTo(group.position);   // 0 on the very first frame, before the camera is placed
+      if (phone && p < .02 && dist > 1){
+        const top = 88, bot = h1.getBoundingClientRect().top - canvas.getBoundingClientRect().top - 16, k = Math.min(1, dt * 4);
+        const ppw = S.h / (2 * dist * Math.tan(camera.fov * Math.PI / 360));   // pixels per world unit
+        fitS += (clamp((bot - top) / (3.6 * ppw), .35, .7) - fitS) * k;
+        V.copy(group.position).project(camera);
+        fitY += ((1 - V.y) / 2 * S.h - (top + bot) / 2) / ppw * k;   // nudge until the protein's centre sits mid-band
+      }
+      group.position.set(narrow ? .4 : 3.4, phone ? fitY + p * 1.2 : narrow ? 2.5 + p * 1.2 : .45 + p * 1.2, 0);
+      group.scale.setScalar(phone ? fitS : narrow ? .85 : 1);
       group.rotation.set(my * .15, .3 * Math.sin(t * .25) + p * 1.6 + mx * .35, 0);   // gentle sway keeps the Pac-Man view
       const lit = Math.floor(t / 3.2) % 3, litK = Math.sin(Math.PI * ((t / 3.2) % 1)) * prog(t, 3, 1);
       if (surf > .005){

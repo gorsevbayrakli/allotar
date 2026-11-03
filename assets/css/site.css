@@ -151,7 +151,7 @@ section{position:relative}
 
 /* pinned protein story */
 .story{height:330vh}
-.story .pin{position:sticky;top:0;height:100vh;overflow:hidden}
+.story .pin{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden}
 .story canvas{position:absolute;inset:0;width:100%;height:100%}
 .story .panel{position:absolute;top:50%;width:min(440px,40vw);transform:translateY(-40%);opacity:0;transition:opacity .8s,transform .8s cubic-bezier(.2,.7,.2,1);pointer-events:none}
 .story .panel.on{opacity:1;transform:translateY(-50%);pointer-events:auto}
@@ -485,7 +485,7 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   .stages{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;font-size:10.5px;hyphens:auto}
   body{font-size:16px}
   .logo{font-size:24px;gap:8px;margin-left:-4px} .logo img{height:42px}
-  .hero:not(.short){align-items:flex-end;padding-bottom:112px}
+  .hero:not(.short){align-items:flex-end;padding-bottom:64px}
   .hero:not(.short) h1{font-size:clamp(40px,11vw,56px)}
   .hero .tags{display:none}
   .hero .btns{flex-direction:column;align-items:stretch}

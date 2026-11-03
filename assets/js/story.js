@@ -17,7 +17,8 @@ export async function initStory(canvas){
   mc.material.opacity = 1;
   const B = new Float32Array(P.N * 3), SITE = lin('#F2A37C');
 
-  let mx = 0, tmx = 0, x = 2, lam = 0, glow = 0;
+  const panels = [...section.querySelectorAll('.panel')];
+  let mx = 0, tmx = 0, x = 2, lam = 0, glow = 0, fy = 1.2, fs = 1;
   addEventListener('pointermove', e => { tmx = e.clientX / innerWidth - .5; });
 
   animate(canvas, (dt, t) => {
@@ -34,7 +35,18 @@ export async function initStory(canvas){
     const pulse = glow * (.65 + .35 * Math.sin(t * 2.4));
     fillSurface(mc, P, B, i => { const c = DOM_COLORS[P.dom[i]]; const s = P.siteOf[i] === 0 ? pulse : 0;
       return s ? [lerp(c[0], SITE[0], s), lerp(c[1], SITE[1], s), lerp(c[2], SITE[2], s)] : c; });
-    group.position.set(x, narrow ? 1.2 : 0, 0);
+    // phones: the text panels sit at the bottom, so fit the protein into the band between the nav and the panel on screen
+    let ty = 0, ts = 1;
+    if (narrow){
+      const camZ = 17, upp = 2 * camZ * Math.tan(15 * Math.PI / 180) / S.h;   // world units per pixel at the protein's depth
+      const on = panels.find(el => el.classList.contains('on')) || panels[0];
+      const bot = on.offsetTop - 24, top = 88;   // offsetTop ignores the panel's slide-in transform
+      ts = clamp((bot - top) * upp / 3.5, .4, 1);   // ~3.5 units: the open protein's height including its sway
+      ty = (S.h / 2 - (top + bot) / 2) * upp + .6 * (1 - ts);
+    }
+    fy += (ty - fy) * k; fs += (ts - fs) * k;
+    group.position.set(x, narrow ? fy : 0, 0);
+    group.scale.setScalar(narrow ? fs : 1);
     group.rotation.set(.05, .3 * Math.sin(t * .3) + mx * .3, 0);
     camera.position.set(0, .6, narrow ? 17 : 13);
     camera.lookAt(0, 0, 0);
