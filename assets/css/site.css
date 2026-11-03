@@ -165,8 +165,9 @@ section{position:relative}
 
 /* big words over a photo collage */
 .words .row{position:relative;display:grid;grid-template-columns:repeat(12,1fr);align-items:center;margin-bottom:var(--s-row)}
-.words .ph{grid-row:1;border-radius:24px;overflow:hidden;aspect-ratio:4/3;box-shadow:0 40px 80px -40px rgba(20,26,75,.45);will-change:transform}
-.words .ph img{width:100%;height:115%;object-fit:cover;will-change:transform}
+.words .ph{grid-row:1;border-radius:24px;overflow:hidden;aspect-ratio:5/3;box-shadow:0 40px 80px -40px rgba(20,26,75,.45);will-change:transform}
+/* 3:2 artwork in a 5:3 frame: 12% extra height, centred, leaves room for the parallax without cropping the sides */
+.words .ph img{position:relative;top:-6%;width:100%;height:112%;object-fit:cover;will-change:transform}
 .words .word{grid-row:1;position:relative;z-index:2;font-size:clamp(40px,5.6vw,86px);font-weight:300;letter-spacing:-.05em;line-height:.95;color:var(--ink);will-change:transform;white-space:nowrap}
 .words .cap{grid-row:2;margin-top:24px;max-width:36ch}
 .words .row:nth-child(odd) .ph{grid-column:5 / span 6}
@@ -476,7 +477,7 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   .story .panel.on{transform:none}
   .words .row{grid-template-columns:1fr}
   .words .row .ph,.words .row .word,.words .row .cap{grid-column:1!important}
-  .words .row .word{justify-self:start!important;margin-top:-.45em;grid-row:2;font-size:clamp(44px,14vw,90px);white-space:normal}
+  .words .row .word{justify-self:start!important;margin-top:24px;grid-row:2;font-size:clamp(44px,14vw,90px);white-space:normal}
   .words .row .cap{grid-row:3}
 }
 @media (max-width:560px){
