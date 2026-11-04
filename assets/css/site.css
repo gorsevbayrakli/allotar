@@ -113,6 +113,10 @@ html[data-tone=navy] .nav ul a.cta{background:#fff;color:var(--navy)}
 /* a white veil behind the text column so the mesh never runs behind the copy */
 .hero::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(255,255,255,.95) 0%,rgba(255,255,255,.9) 34%,rgba(255,255,255,.55) 50%,rgba(255,255,255,0) 66%)}
 .hero .lead{color:#2f365c}
+/* dark hero (home): navy veil behind the text, light copy, glassy tags */
+.hero[data-theme=navy]::before{background:linear-gradient(90deg,rgba(10,16,48,.85) 0%,rgba(10,16,48,.7) 34%,rgba(10,16,48,.3) 50%,rgba(10,16,48,0) 66%)}
+.hero[data-theme=navy] .lead{color:var(--soft)}
+.hero[data-theme=navy] .tags span{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14)}
 .hero .wrap{position:relative;z-index:2;width:100%;pointer-events:none}
 .hero .wrap > *{pointer-events:auto}
 .hero h1{max-width:12ch;margin:24px 0 24px}
@@ -515,3 +519,4 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
 .words .row:last-child{margin-bottom:0}
 .sec.words{padding-bottom:var(--s-tail)}   /* the collage ends on a caption; a full section pad below it read as a gap */
 .split:has(.selmap){align-items:start}   /* heading starts level with the top of the selectivity map */
+@media (max-width:860px){ .hero[data-theme=navy]::before{background:linear-gradient(180deg,rgba(10,16,48,0) 20%,rgba(10,16,48,.75) 55%,rgba(10,16,48,.88) 75%)} }

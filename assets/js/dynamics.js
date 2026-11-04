@@ -28,13 +28,18 @@ function filmLayer(canvas){
   const tex = new THREE.VideoTexture(video); tex.colorSpace = THREE.NoColorSpace; tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
   const scene = new THREE.Scene(), cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
-    uniforms: {map: {value: tex}}, transparent: true,
+    uniforms: {map: {value: tex}, px: {value: new THREE.Vector2(1 / 560, 1 / 846)}}, transparent: true,
     vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }`,
-    fragmentShader: `uniform sampler2D map; varying vec2 vUv;
+    fragmentShader: `uniform sampler2D map; uniform vec2 px; varying vec2 vUv;
+      float cover(vec2 uv){ vec3 c = texture2D(map, uv).rgb; return 1. - smoothstep(.9, .975, min(min(c.r, c.g), c.b)); }   // the film's background is pure white
       void main(){
         vec3 c = texture2D(map, vUv).rgb;
-        float a = 1. - smoothstep(.9, .985, min(min(c.r, c.g), c.b));   // the film's background is pure white
-        vec3 fg = clamp((c - (1. - a)) / max(a, .001), 0., 1.);           // un-mix the white from soft edges
+        // erode the matte by ~2 px: compression smears the white into the outline, which read as a bright rim on navy
+        float a = cover(vUv);
+        for (int i = 0; i < 8; i++){ float t = float(i) * .785398; a = min(a, cover(vUv + vec2(cos(t), sin(t)) * px * 2.)); }
+        a = smoothstep(.15, 1., a);
+        float a0 = max(cover(vUv), .001);
+        vec3 fg = clamp((c - (1. - a0)) / a0, 0., 1.);                   // un-mix any white left in the edge colour
         gl_FragColor = vec4(fg * a, a);
       }`
   })));

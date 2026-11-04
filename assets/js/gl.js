@@ -62,7 +62,8 @@ export function pacmanView(P, roll = -103 * Math.PI / 180){
 
 // ---------- stage: renderer + bloom, sized to its canvas ----------
 // light: transparent canvas over a light page, no bloom, glow points drawn as soft opaque dots
-export function createStage(canvas, {bloom = [.55, .7, .82], exposure = .85, fog = .022, bg = '#0a1030', fov = 32, env = true, light = false} = {}){
+// minDpr: render at least at this pixel ratio (supersampling), for small scenes whose edges would look jagged at 1×
+export function createStage(canvas, {bloom = [.55, .7, .82], exposure = .85, fog = .022, bg = '#0a1030', fov = 32, env = true, light = false, minDpr = 1} = {}){
   const renderer = new THREE.WebGLRenderer({canvas, antialias: light, alpha: light, powerPreference: 'high-performance'});
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = exposure;
   const scene = new THREE.Scene();
@@ -74,8 +75,7 @@ export function createStage(canvas, {bloom = [.55, .7, .82], exposure = .85, fog
   }
   const camera = new THREE.PerspectiveCamera(fov, 1, .1, 300);
   if (env){ const pm = new THREE.PMREMGenerator(renderer); scene.environment = pm.fromScene(new RoomEnvironment(), .04).texture; }
-  // 4× MSAA on the composer's target: without it the post-processed scenes render with jagged edges
-  const composer = light ? null : new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, {type: THREE.HalfFloatType, samples: 4}));
+  const composer = light ? null : new EffectComposer(renderer);
   if (composer){
     composer.addPass(new RenderPass(scene, camera));
     if (bloom) composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), ...bloom));
@@ -84,7 +84,7 @@ export function createStage(canvas, {bloom = [.55, .7, .82], exposure = .85, fog
   const glow = glowMaterial(light);
   const stage = {renderer, scene, camera, composer, glow, light, w: 1, h: 1, onResize: null};
   const resize = () => {
-    const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1, dpr = Math.min(devicePixelRatio || 1, 2);
+    const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1, dpr = Math.min(Math.max(devicePixelRatio || 1, minDpr), 2);
     stage.w = w; stage.h = h;
     renderer.setPixelRatio(dpr); renderer.setSize(w, h, false); if (composer){ composer.setPixelRatio(dpr); composer.setSize(w, h); }
     camera.aspect = w / h; camera.updateProjectionMatrix();
