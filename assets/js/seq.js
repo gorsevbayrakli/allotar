@@ -5,8 +5,11 @@ const SMALL = Math.min(innerWidth, innerHeight * .8) < 700;
 export function loadSeq(name, count){
   const dir = new URL(`../img/seq/${name}/${SMALL ? 's' : 'l'}/`, import.meta.url).href;
   const frames = new Array(count).fill(null);
-  const load = k => new Promise(res => { const im = new Image(); im.decoding = 'async';
-    im.onload = () => { frames[k] = im; res(); }; im.onerror = res; im.src = `${dir}${String(k).padStart(3, '0')}.webp`; });
+  // one retry per frame: a dropped request leaves a gap the neighbours cover, but should not stay missing
+  const load = (k, retry = 1) => new Promise(res => { const im = new Image(); im.decoding = 'async';
+    im.onload = () => { frames[k] = im; res(); };
+    im.onerror = () => retry ? setTimeout(() => load(k, 0).then(res), 800) : res();
+    im.src = `${dir}${String(k).padStart(3, '0')}.webp`; });
   // first frame, then every 4th, then the rest: the sequence is usable early and fills in
   const order = [...Array(count).keys()].sort((a, b) => (a % 4 !== 0) - (b % 4 !== 0) || a - b);
   const first = load(order[0]);

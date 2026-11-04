@@ -30,8 +30,9 @@ export function initStory(canvas){
       tbh = Math.max(140, bot - top); tcy = (top + bot) / 2;
     }
     cy = cy ? cy + (tcy - cy) * k : tcy; bh = bh ? bh + (tbh - bh) * k : tbh;
-    const bw = bh * seq.ratio, bob = Math.sin(t * .6) * H * .006;   // a slow float keeps it alive between scrolls
+    const bw = bh * seq.ratio;
     ctx.clearRect(0, 0, W, H);
-    seq.draw(ctx, f, W / 2 + x * W - bw / 2 + mx * 12, cy - bh / 2 + bob, bw, bh);
+    // whole pixels: sub-pixel placement resamples the render every frame and reads as shimmer
+    seq.draw(ctx, f, Math.round(W / 2 + x * W - bw / 2 + mx * 12), Math.round(cy - bh / 2), Math.round(bw), Math.round(bh));
   });
 }

@@ -13,12 +13,13 @@ URL = 'http://localhost:8743/tools/render/render.html'
 def ease(x):
     x = min(1, max(0, x)); return 4*x*x*x if x < .5 else 1 - (-2*x + 2) ** 3 / 2
 
-def hero(n=48):
-    # seamless loop: breathes half-closed and back while swaying a little; one site glows at the crest
+def hero(n=120):
+    # seamless 12 s loop at 10 fps: breathes part-closed and back while swaying a little; one site glows at the crest.
+    # Small steps per frame (and a temporal filter in pack.py) keep the playback from shimmering.
     out = []
     for k in range(n):
         u = k / n
-        out.append(dict(lam=.38 - .38 * math.cos(2 * math.pi * u), rotY=.26 * math.sin(2 * math.pi * u), rotX=.05,
+        out.append(dict(lam=.3 - .3 * math.cos(2 * math.pi * u), rotY=.14 * math.sin(2 * math.pi * u), rotX=.05,
                         glow=max(0, math.sin(2 * math.pi * u)) ** 3 * .9, site=0))
     return out
 
@@ -30,7 +31,7 @@ def story(n=40):
         out.append(dict(lam=ease(u / .6), rotY=-.35 + .45 * ease(u), rotX=.05, glow=ease((u - .62) / .38), site=0))
     return out
 
-JOBS = {'hero': (hero, dict(w=800, h=890, samples=224)), 'story': (story, dict(w=800, h=890, samples=224))}
+JOBS = {'hero': (hero, dict(w=800, h=890, samples=160)), 'story': (story, dict(w=800, h=890, samples=160))}
 
 async def main():
     job = sys.argv[1]; test = '--test' in sys.argv

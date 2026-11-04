@@ -116,7 +116,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
   let seq = null, layer = null;
   if (mode === 'protein'){
     const el = document.createElement('canvas'); el.className = 'hero-seq'; el.setAttribute('aria-hidden', 'true');
-    canvas.after(el); layer = canvas2d(el); seq = loadSeq('hero', 48);
+    canvas.after(el); layer = canvas2d(el); seq = loadSeq('hero', 120);
   }
 
   let scrollP = 0, mx = 0, my = 0, tmx = 0, tmy = 0;
@@ -146,7 +146,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
 
     // protein
     if (seq){
-      const W = layer.w, H = layer.h, phone = W < 760 && h1, narrow2 = W < 1000, ctx = layer.ctx;
+      const W = layer.w, H = layer.h, phone = W < 1000 && h1, narrow2 = W < 1000, ctx = layer.ctx;   // phones and tablets: fit above the headline
       let cx, cy, bh;
       if (phone){ const top = 88, bot = h1.getBoundingClientRect().top - canvas.getBoundingClientRect().top - 16; bh = Math.max(120, bot - top); cy = (top + bot) / 2; cx = W / 2; }
       else if (narrow2){ bh = H * .44; cx = W / 2; cy = 88 + bh / 2; }
@@ -154,7 +154,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
       const intro = ease(prog(t, .2, 1.6)), sc = (.94 + .06 * intro) * bh, bw = sc * seq.ratio;
       ctx.clearRect(0, 0, W, H);
       ctx.globalAlpha = intro * clamp(1 - p * 1.15);
-      seq.draw(ctx, t * 6, cx - bw / 2 + mx * 14, cy - sc / 2 - p * H * .22 + my * 8, bw, sc, true);   // 48 frames, 8 s loop
+      seq.draw(ctx, t * 10, Math.round(cx - bw / 2 + mx * 14), Math.round(cy - sc / 2 - p * H * .22 + my * 8), Math.round(bw), Math.round(sc), true);   // 120 frames, 12 s loop; whole pixels so it never shimmers
       ctx.globalAlpha = 1;
       camera.position.set(mx * .8, 2.2 + p * .8 - my * .4, (narrow ? 18 : 12.5) - p * 2.5);
       camera.lookAt(narrow ? 0 : -.6, -1.4 - p * .4, -3);
