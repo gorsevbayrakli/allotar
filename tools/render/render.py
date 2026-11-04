@@ -4,7 +4,8 @@ usage: python render.py <job> [--test]
   jobs are defined in JOBS below; each writes PNG frames to tools/render/out/<job>/ which are then converted to
   WebP for the site. Needs the site served on http://localhost:8743 and Playwright with Chromium.
 """
-import asyncio, base64, json, math, pathlib, sys, time
+import asyncio, base64, io, json, math, pathlib, sys, time
+from PIL import Image
 from playwright.async_api import async_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -12,16 +13,6 @@ URL = 'http://localhost:8743/tools/render/render.html'
 
 def ease(x):
     x = min(1, max(0, x)); return 4*x*x*x if x < .5 else 1 - (-2*x + 2) ** 3 / 2
-
-def hero(n=120):
-    # seamless 12 s loop at 10 fps: breathes part-closed and back while swaying a little; one site glows at the crest.
-    # Small steps per frame (and a temporal filter in pack.py) keep the playback from shimmering.
-    out = []
-    for k in range(n):
-        u = k / n
-        out.append(dict(lam=.3 - .3 * math.cos(2 * math.pi * u), rotY=.14 * math.sin(2 * math.pi * u), rotX=.05,
-                        glow=max(0, math.sin(2 * math.pi * u)) ** 3 * .9, site=0))
-    return out
 
 def story(n=40):
     # scroll-driven: open → closed (first 60%), then the allosteric site lights up and swells out of its pocket
@@ -31,7 +22,13 @@ def story(n=40):
         out.append(dict(lam=ease(u / .6), rotY=-.35 + .45 * ease(u), rotX=.05, glow=ease((u - .62) / .38), site=0))
     return out
 
-JOBS = {'hero': (hero, dict(w=800, h=890, samples=160)), 'story': (story, dict(w=800, h=890, samples=160))}
+def still():
+    # home hero: two stills of the same pose, the second with the allosteric site lit. The page cross-fades them
+    # and floats the image; identical geometry means nothing in the protein can shimmer.
+    return [dict(lam=.18, rotY=0, rotX=.05, glow=g, site=0, swell=0) for g in (0, 1)]
+
+JOBS = {'story': (story, dict(w=1000, h=1112, samples=128, grow=1.1, dist=10.2)),
+        'still': (still, dict(w=1600, h=1780, samples=512, grow=1.1, dist=10.2))}
 
 async def main():
     job = sys.argv[1]; test = '--test' in sys.argv
@@ -46,8 +43,15 @@ async def main():
         await pg.goto(URL); await pg.wait_for_function('window.ready === true', timeout=120000)
         for k, f in enumerate(frames):
             t = time.time()
-            data = await pg.evaluate('o => window.renderFrame(o)', {**base, **f})
-            (out / f'{k:03d}.png').write_bytes(base64.b64decode(data.split(',', 1)[1]))
+            o = {**base, **f}; W, H = o['w'], o['h']
+            # big frames in a grid of pieces of at most 800 px (see render.html), stitched into one PNG
+            nx, ny = math.ceil(W / 800), math.ceil(H / 900); full = Image.new('RGBA', (W, H))
+            for j in range(ny):
+                for i in range(nx):
+                    x0, y0 = W * i // nx, H * j // ny; pw, ph = W * (i + 1) // nx - x0, H * (j + 1) // ny - y0
+                    data = await pg.evaluate('o => window.renderFrame(o)', {**o, 'part': [x0, y0, pw, ph]})
+                    full.paste(Image.open(io.BytesIO(base64.b64decode(data.split(',', 1)[1]))), (x0, y0))
+            full.save(out / f'{k:03d}.png')
             print(f'{job} {k + 1}/{len(frames)} {time.time() - t:.1f}s', flush=True)
         await b.close()
 

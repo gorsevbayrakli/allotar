@@ -41,13 +41,17 @@ let mesh = null;
 
 // opts: lam 0 open → 1 closed, rotY/rotX radians on top of the view, glow 0..1 on site `site`, palette colours
 window.renderFrame = async ({w = 900, h = 1000, lam = 0, rotY = 0, rotX = 0, glow = 0, site = 0, samples = 160, dist = 11.5,
-  cols = ['#6b7cf0', '#9a8fe6', '#5c9be6'], siteCol = '#f2a37c', exposure = 1.05, swell = .45, y = 0} = {}) => {
-  renderer.setSize(w, h, false); renderer.toneMappingExposure = exposure;
-  camera.aspect = w / h; camera.updateProjectionMatrix(); camera.position.set(0, .15, dist); camera.lookAt(0, 0, 0);
+  cols = ['#6b7cf0', '#9a8fe6', '#5c9be6'], siteCol = '#f2a37c', exposure = 1.05, swell = .45, y = 0, grow = 1,
+  part = null} = {}) => {
+  // part [x, y, w, h]: render one piece of the w × h frame (the path tracer returns nothing above ~1024 px, so
+  // render.py renders big frames in pieces and stitches them)
+  const [px, py, pw, ph] = part || [0, 0, w, h];
+  renderer.setSize(pw, ph, false); renderer.toneMappingExposure = exposure;
+  camera.aspect = w / h; camera.setViewOffset(w, h, px, py, pw, ph); camera.updateProjectionMatrix(); camera.position.set(0, .15, dist); camera.lookAt(0, 0, 0);
   const C = cols.map(lin), S = lin(siteCol), m = new THREE.Matrix4(), parts = [], litParts = [];
   for (let i = 0; i < N; i++){
     const j = i * 3, x = P0[j] + (P1[j] - P0[j]) * lam, yy = P0[j+1] + (P1[j+1] - P0[j+1]) * lam, z = P0[j+2] + (P1[j+2] - P0[j+2]) * lam;
-    const lit = siteOf[i] === site ? glow : 0, r = RAD[i] * K * (1 + swell * lit);
+    const lit = siteOf[i] === site ? glow : 0, r = RAD[i] * K * grow * (1 + swell * lit);
     const g = sphere.clone(); g.applyMatrix4(m.makeScale(r, r, r).setPosition(x * K, yy * K, z * K));
     const c = C[d.dom[i]].clone().lerp(S, lit), n = g.attributes.position.count, col = new Float32Array(n * 3);
     for (let k = 0; k < n; k++){ col[k*3] = c.r; col[k*3+1] = c.g; col[k*3+2] = c.b; }

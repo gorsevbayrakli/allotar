@@ -2,8 +2,10 @@
 // Lights tell the sampling story. Each light is one sampled conformation: it appears where it is found and
 // stays until the loop ends. First the deepest well fills, then samples appear along the minimum path, partly
 // filling each small local minimum on the way before moving on, and fill the second-deepest well (forward,
-// yellow); the way back runs along a different route through its own local minima (backward, blue). The protein is a path-traced render sequence (seq.js) drawn on its own layer.
-import {loadSeq, canvas2d} from './seq.js';
+// yellow); the way back runs along a different route through its own local minima (backward, blue). The protein is a path-traced still (tools/render) drawn on its own layer: two renders of one pose, the second with
+// the allosteric site lit, cross-faded while the image floats. One pose means nothing inside the protein moves, so
+// nothing can shimmer.
+import {canvas2d} from './seq.js';
 import {THREE, createStage, makePoints, animate, clamp, ease, prog, rng, hdr, rgb} from './gl.js';
 
 // ---------- landscape (same function on the GPU and the CPU) ----------
@@ -112,11 +114,13 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
   const DUST = []; { const r = rng(9); for (let i = 0; i < 300; i++) DUST.push([(r() - .5) * 40, (r() - .1) * 14, -r() * 30 + 4, r() * 6.28, .1 + r() * .25, .02 + r() * .05, .1 + r() * .4]); }
   const DCOL = hdr('#9fb8ff', 1.1);
 
-  // protein: path-traced render sequence (tools/render) on its own 2D layer above the landscape
+  // protein: path-traced stills on their own 2D layer above the landscape
   let seq = null, layer = null;
   if (mode === 'protein'){
     const el = document.createElement('canvas'); el.className = 'hero-seq'; el.setAttribute('aria-hidden', 'true');
-    canvas.after(el); layer = canvas2d(el); seq = loadSeq('hero', 120);
+    canvas.after(el); layer = canvas2d(el);
+    const size = Math.min(innerWidth, innerHeight * .8) < 700 ? 's' : 'l', img = n => { const im = new Image(); im.decoding = 'async'; im.src = new URL(`../img/protein/${n}-${size}.webp`, import.meta.url).href; return im; };
+    seq = {base: img('hero'), lit: img('hero-lit'), get ratio(){ return this.base.naturalWidth ? this.base.naturalWidth / this.base.naturalHeight : .85; }};
   }
 
   let scrollP = 0, mx = 0, my = 0, tmx = 0, tmy = 0;
@@ -150,11 +154,16 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
       let cx, cy, bh;
       if (phone){ const top = 88, bot = h1.getBoundingClientRect().top - canvas.getBoundingClientRect().top - 16; bh = Math.max(120, bot - top); cy = (top + bot) / 2; cx = W / 2; }
       else if (narrow2){ bh = H * .44; cx = W / 2; cy = 88 + bh / 2; }
-      else { bh = Math.min(H * .64, W * .46); cx = W * .75; cy = H * .44; }
-      const intro = ease(prog(t, .2, 1.6)), sc = (.94 + .06 * intro) * bh, bw = sc * seq.ratio;
+      else { bh = Math.min(H * .54, W * .38); cx = W * .74; cy = H * .45; }
+      const intro = ease(prog(t, .2, 1.6)), sc = (.94 + .06 * intro) * bh * (1 + .012 * Math.sin(t * .4)), bw = sc * seq.ratio;
+      // slow float and a soft pulse of the lit site (10 s); sub-pixel positions keep the glide smooth
+      const x0 = cx - bw / 2 + mx * 14, y0 = cy - sc / 2 - p * H * .22 + my * 8 + 6 * Math.sin(t * .55), glow = Math.pow(.5 - .5 * Math.cos(t * .628), 2);
       ctx.clearRect(0, 0, W, H);
-      ctx.globalAlpha = intro * clamp(1 - p * 1.15);
-      seq.draw(ctx, t * 10, Math.round(cx - bw / 2 + mx * 14), Math.round(cy - sc / 2 - p * H * .22 + my * 8), Math.round(bw), Math.round(sc), true);   // 120 frames, 12 s loop; whole pixels so it never shimmers
+      const a = intro * clamp(1 - p * 1.15);
+      if (seq.base.complete && seq.base.naturalWidth){
+        ctx.globalAlpha = a; ctx.drawImage(seq.base, x0, y0, bw, sc);
+        if (seq.lit.complete && seq.lit.naturalWidth && glow > .01){ ctx.globalAlpha = a * glow; ctx.drawImage(seq.lit, x0, y0, bw, sc); }
+      }
       ctx.globalAlpha = 1;
       camera.position.set(mx * .8, 2.2 + p * .8 - my * .4, (narrow ? 18 : 12.5) - p * 2.5);
       camera.lookAt(narrow ? 0 : -.6, -1.4 - p * .4, -3);

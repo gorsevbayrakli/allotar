@@ -11,10 +11,10 @@
 <link rel="icon" href="assets/brand/logo-mark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/site.css?v=29">
+<link rel="stylesheet" href="assets/css/site.css?v=30">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.min.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}</script>
 <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js" defer></script>
-<script type="module" src="assets/js/site.js?v=29"></script>
+<script type="module" src="assets/js/site.js?v=30"></script>
 </head>
 <body data-page="home">
 <div class="loader" aria-hidden="true"><div class="in"><img src="assets/brand/logo-mark.png" alt="Allotar Therapeutics"><div class="pct">000</div><div class="bar"><i></i></div></div></div>
@@ -73,9 +73,17 @@
       <div class="label">Selectivity first</div>
       <h3>One site, one protein, one precise intervention.</h3><hr>
       <p>We design site-specific modalities — small molecules, macrocyclic peptides and designed scaffolds — and test every one for binding, function and selectivity.</p>
+    </div>
+    <div class="panel r">
+      <div class="label">Closed loop</div>
+      <h3>Every round, more selective.</h3><hr>
+      <p>Each design round is tested against the target and its closest relatives. Every result, hit or miss, shapes the next round — until a candidate acts on the target alone.</p>
       <div class="btns"><a class="btn solid" href="platform.html">Explore AllotarX™ <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8h12M9 3l5 5-5 5"/></svg></a></div>
     </div>
-    <div class="count" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="selmap" data-gl="selmap">
+      <canvas aria-label="Selectivity map: four design rounds measured against the target and five off-target proteins. Round by round, off-target binding fades while target binding stays strong, ending in a selective hit. Illustrative values."></canvas>
+    </div>
+    <div class="count" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
   </div>
 </section>
 
@@ -114,24 +122,9 @@
   </div>
 </section>
 
-<section class="sec" id="workflow" data-theme="light">
+<section class="sec" id="news" data-theme="light">
   <div class="wrap">
-    <div class="split">
-      <div>
-        <div class="label"><i>03</i> AllotarX™ workflow</div>
-        <h2 data-split>From dynamic ensembles to selective therapeutics</h2>
-        <p class="lead" data-reveal>Identify functional allosteric sites, prioritize druggable pockets, design selective interventions, and improve every cycle with functional validation.</p>
-      </div>
-      <div class="selmap" data-gl="selmap" data-reveal>
-        <canvas aria-label="Selectivity map: four design rounds measured against the target and five off-target proteins. Round by round, off-target binding fades while target binding stays strong, ending in a selective hit."></canvas>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="sec" id="news" data-theme="light" style="padding-top:0">
-  <div class="wrap">
-    <div class="head"><div class="label"><i>04</i> Insights</div><h2 data-split>News &amp; Updates</h2></div>
+    <div class="head"><div class="label"><i>03</i> Insights</div><h2 data-split>News &amp; Updates</h2></div>
     <div class="news">
   <article data-reveal>
     <time datetime="2026-09">09.2026</time>

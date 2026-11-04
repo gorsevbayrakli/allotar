@@ -1,8 +1,9 @@
 """Crop a rendered sequence to the union of its frames' content and write WebP frames for the site.
 
-usage: python pack.py <job>   reads tools/render/out/<job>/*.png, writes assets/img/seq/<job>/{l,s}/NNN.webp
-  l: desktop (max 720 px wide), s: phones (max 420 px wide). Every frame gets the same crop, so the
+usage: python pack.py <job>   reads tools/render/out/<job>/*.png
+  story: writes assets/img/seq/story/{l,s}/NNN.webp (l desktop, s phones); every frame gets the same crop, so the
   sequence stays registered and the player can treat the frames as one image.
+  still: writes assets/img/protein/hero-{l,s}.webp and hero-lit-{l,s}.webp (same crop, so they cross-fade in place).
 """
 import pathlib, sys
 from PIL import Image
@@ -16,7 +17,7 @@ ims = [Image.open(f).convert('RGBA') for f in src]
 # cancels most of the grain. Loops wrap around, scrubbed sequences clamp at the ends.
 import numpy as np
 LOOP = job == 'hero'
-W = [1, 2, 3, 2, 1] if LOOP else [1, 2, 1]
+W = [1, 2, 3, 2, 1] if LOOP else [1] if job == 'still' else [1, 2, 1]
 arr = [np.asarray(im, dtype=np.float32) for im in ims]
 n, h = len(arr), len(W) // 2
 def tap(k): return arr[k % n] if LOOP else arr[min(n - 1, max(0, k))]
@@ -32,11 +33,14 @@ for im in ims:
 pad = 12
 box = (max(0, box[0] - pad), max(0, box[1] - pad), min(ims[0].width, box[2] + pad), min(ims[0].height, box[3] + pad))
 print(job, len(ims), 'frames, crop', box)
-total = 0
-for size, maxw in (('l', 720), ('s', 340)):
-    out = ROOT / 'assets/img/seq' / job / size; out.mkdir(parents=True, exist_ok=True)
+SIZES = {'still': (('l', 1100), ('s', 640)), 'story': (('l', 820), ('s', 560))}.get(job, (('l', 720), ('s', 340)))
+for size, maxw in SIZES:
     for k, im in enumerate(ims):
         c = im.crop(box)
         if c.width > maxw: c = c.resize((maxw, round(c.height * maxw / c.width)), Image.LANCZOS)
-        f = out / f'{k:03d}.webp'; c.save(f, 'WEBP', quality=78, method=6, alpha_quality=85); total += f.stat().st_size
+        if job == 'still':
+            out = ROOT / 'assets/img/protein'; out.mkdir(parents=True, exist_ok=True); f = out / f"{('hero', 'hero-lit')[k]}-{size}.webp"
+        else:
+            out = ROOT / 'assets/img/seq' / job / size; out.mkdir(parents=True, exist_ok=True); f = out / f'{k:03d}.webp'
+        c.save(f, 'WEBP', quality=82, method=6, alpha_quality=90)
     print(size, c.size, f'{sum(p.stat().st_size for p in out.glob("*.webp")) / 1e6:.2f} MB')

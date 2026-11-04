@@ -154,7 +154,7 @@ section{position:relative}
 .statement .row hr{grid-column:2;border:0;height:1px;background:var(--line2);margin:-12px 0 0}
 
 /* pinned protein story */
-.story{height:330vh}
+.story{height:440vh}
 .story .pin{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden}
 .story canvas{position:absolute;inset:0;width:100%;height:100%}
 .story .panel{position:absolute;top:50%;width:min(440px,40vw);transform:translateY(-40%);opacity:0;transition:opacity .8s,transform .8s cubic-bezier(.2,.7,.2,1);pointer-events:none}
@@ -163,6 +163,12 @@ section{position:relative}
 .story .panel.r{right:max(var(--gut),calc(50vw - 620px + var(--gut)))}
 .story .panel h3{font-size:clamp(26px,2.6vw,38px);font-weight:500;letter-spacing:-.025em;margin:16px 0 16px;line-height:1.12}
 .story .panel hr{border:0;height:1px;background:var(--line2);margin:16px 0 16px}
+/* fourth panel: the selectivity map takes the protein's place, as a dark glass card in the same light */
+.story .selmap{position:absolute;top:50%;left:max(var(--gut),calc(50vw - 620px + var(--gut)));width:min(600px,46vw);max-width:none;margin:0;
+  background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.1);box-shadow:0 40px 120px -40px rgba(70,86,200,.55);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);opacity:0;transform:translateY(-44%);transition:opacity .8s,transform .8s cubic-bezier(.2,.7,.2,1);pointer-events:none}
+.story .selmap::before{content:"";position:absolute;inset:-30%;z-index:-1;background:radial-gradient(closest-side,rgba(120,110,230,.28),transparent);pointer-events:none}
+.story.last .selmap{opacity:1;transform:translateY(-50%)}
 .story .count{position:absolute;left:50%;bottom:32px;transform:translateX(-50%);display:flex;gap:12px}
 .story .count i{width:34px;height:2px;border-radius:2px;background:var(--line2);transition:background .5s}
 .story .count i.on{background:var(--ink)}
@@ -442,6 +448,7 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   .statement{height:auto} .statement .pin{position:relative;height:auto;padding:120px 0} .statement .huge{white-space:normal;transform:none} .statement .row{opacity:1;transform:none}
   .story{height:auto} .story .pin{position:relative;height:auto;padding:104px 0} .story canvas{position:relative;height:60vh}
   .story .panel{position:relative;opacity:1;transform:none;width:auto;left:auto;right:auto;margin:40px var(--gut)}
+  .story .selmap{position:relative;opacity:1;transform:none;left:auto;top:auto;width:auto;max-width:600px;margin:40px var(--gut)}
 }
 
 /* responsive */
@@ -485,6 +492,8 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   .statement .huge{white-space:normal} .statement .huge span + span{transform:translate3d(calc(var(--x,0px) * -1),0,0)}
   .story .panel{width:auto;left:var(--gut)!important;right:var(--gut)!important;top:auto;bottom:88px;transform:translateY(20px)}
   .story .panel.on{transform:none}
+  .story .selmap{left:50%;aspect-ratio:auto;transform:translate(-50%,12px)}
+  .story.last .selmap{transform:translate(-50%,0)}
   .words .row{grid-template-columns:1fr}
   .words .row .ph,.words .row .word,.words .row .cap{grid-column:1!important}
   .words .row .word{justify-self:start!important;margin-top:24px;grid-row:2;font-size:clamp(44px,14vw,90px);white-space:normal}

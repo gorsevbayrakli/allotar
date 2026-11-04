@@ -12,9 +12,12 @@ const DATA = [
 ];
 const ROW_T = 3.2, HOLD = 3, LOOP = DATA.length * ROW_T + HOLD;
 const MONO = "500 10px 'JetBrains Mono', monospace", SANS = "600 13px 'Raleway', sans-serif";
-const INK = '#141a4b', DIM = '#6e7493', LINE = 'rgba(27,37,89,.1)', PEACH = '#e9783f', ACCENT = '#4656c8';
-// lavender → navy scale
-const STOPS = [[238, 240, 248], [154, 143, 214], [35, 50, 109]];
+const PEACH = '#e9783f';
+// light card: lavender → navy scale on white. Dark card (inside the navy home story): weak binding sinks into the
+// navy, strong binding glows pale lavender.
+const LIGHT = {ink: '#141a4b', dim: '#6e7493', fill: '27,37,89', dash: '70,86,200', stops: [[238, 240, 248], [154, 143, 214], [35, 50, 109]], strong: .45, onStrong: '#fff', onWeak: '#141a4b'};
+const DARK = {ink: '#eef0ff', dim: 'rgba(206,211,245,.6)', fill: '255,255,255', dash: '170,178,255', stops: [[40, 48, 108], [112, 104, 214], [206, 200, 255]], strong: .6, onStrong: '#141a4b', onWeak: '#eef0ff'};
+let STOPS = LIGHT.stops;
 function heat(v){
   const k = clamp(v) * 2, i = Math.min(1, Math.floor(k)), f = k - i, a = STOPS[i], b = STOPS[i + 1];
   return `rgb(${a[0] + (b[0] - a[0]) * f | 0},${a[1] + (b[1] - a[1]) * f | 0},${a[2] + (b[2] - a[2]) * f | 0})`;
@@ -23,14 +26,19 @@ const ratio = r => r[0] / Math.max(...r.slice(1));
 
 export function initSelmap(root){
   const cv = root.querySelector('canvas'), ctx = cv.getContext('2d');
+  // in the home story the map is the fourth panel: it is dark, and its rounds start when that panel opens
+  const story = root.closest('[data-story]'), C = story ? DARK : LIGHT, INK = C.ink, DIM = C.dim;
+  let clock = 0;
   let W = 1, H = 1;
   const resize = () => { const dpr = Math.min(devicePixelRatio || 1, 2); W = cv.clientWidth; H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
   new ResizeObserver(resize).observe(cv); resize();
   // rounded rectangle path (drawn by hand so older browsers without roundRect work too)
-  const rr = (x, y, w, h, r) => { r = Math.min(r, w / 2, h / 2); ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); };
+  const rr = (x, y, w, h, r) => { w = Math.max(0, w); h = Math.max(0, h); r = Math.max(0, Math.min(r, w / 2, h / 2)); ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); };
 
   animate(root, (dt, time) => {
-    const t = REDUCED ? LOOP - .5 : time % LOOP;
+    STOPS = C.stops;
+    clock = story && !story.classList.contains('last') ? 0 : clock + dt;
+    const t = REDUCED ? LOOP - .5 : clock % LOOP;
     const fade = 1 - clamp((t - (LOOP - .6)) / .6);   // soft reset at the end of the loop
     ctx.clearRect(0, 0, W, H);
     ctx.globalAlpha = 1;
@@ -49,7 +57,7 @@ export function initSelmap(root){
     DATA.forEach((row, i) => {
       const y = top + i * (ch + gap), local = t - i * ROW_T;
       if (local < 0){ // not reached yet: faint empty row
-        ctx.fillStyle = 'rgba(27,37,89,.035)'; COLS.forEach((c, j) => { rr(gx + j * cw, y, cw - gap, ch, 8); ctx.fill(); });
+        ctx.fillStyle = `rgba(${C.fill},.035)`; COLS.forEach((c, j) => { rr(gx + j * cw, y, cw - gap, ch, 8); ctx.fill(); });
         ctx.fillStyle = 'rgba(110,116,147,.45)'; ctx.font = MONO; ctx.fillText(String(i + 1).padStart(2, '0'), pad, y + ch / 2 + 4);
         return;
       }
@@ -59,12 +67,12 @@ export function initSelmap(root){
         const x = gx + j * cw, k = clamp(test * 1.6 - j * .12);   // cells fill left to right
         ctx.globalAlpha = fade;
         // placeholder while designing / building
-        ctx.fillStyle = `rgba(27,37,89,${.04 + .05 * build * (k < 1 ? .5 + .5 * Math.sin(time * 8 + j) : 0)})`;
+        ctx.fillStyle = `rgba(${C.fill},${.04 + .05 * build * (k < 1 ? .5 + .5 * Math.sin(time * 8 + j) : 0)})`;
         rr(x, y, cw - gap, ch, 8); ctx.fill();
-        if (design < 1){ ctx.strokeStyle = `rgba(70,86,200,${.35 * design})`; ctx.setLineDash([4, 4]); ctx.lineWidth = 1; rr(x + .5, y + .5, cw - gap - 1, ch - 1, 8); ctx.stroke(); ctx.setLineDash([]); }
+        if (design < 1){ ctx.strokeStyle = `rgba(${C.dash},${.35 * design})`; ctx.setLineDash([4, 4]); ctx.lineWidth = 1; rr(x + .5, y + .5, cw - gap - 1, ch - 1, 8); ctx.stroke(); ctx.setLineDash([]); }
         if (k > 0){
           ctx.globalAlpha = fade * ease(k); ctx.fillStyle = heat(v); rr(x, y, cw - gap, ch, 8); ctx.fill();
-          if (cw > 46){ ctx.globalAlpha = fade * ease(k); ctx.font = MONO; ctx.textAlign = 'center'; ctx.fillStyle = v > .45 ? '#fff' : INK; ctx.fillText(v.toFixed(2), x + (cw - gap) / 2, y + ch / 2 + 4); ctx.textAlign = 'left'; }
+          if (cw > 46){ ctx.globalAlpha = fade * ease(k); ctx.font = MONO; ctx.textAlign = 'center'; ctx.fillStyle = v > C.strong ? C.onStrong : C.onWeak; ctx.fillText(v.toFixed(2), x + (cw - gap) / 2, y + ch / 2 + 4); ctx.textAlign = 'left'; }
         }
         // learn: off-target cells that still bind are flagged for the next design
         const learn = clamp((local - 2.2) / .4) * (1 - clamp((local - ROW_T - .4) / .6));
@@ -74,7 +82,7 @@ export function initSelmap(root){
       // selectivity bar
       const s = clamp((local - 2) / .8), rat = ratio(row), bx = gx + gw + 16, bw = barW - 16 - (W < 420 ? 0 : 32);
       ctx.globalAlpha = fade;
-      ctx.fillStyle = 'rgba(27,37,89,.06)'; rr(bx, y + ch / 2 - 3, bw, 6, 3); ctx.fill();
+      ctx.fillStyle = `rgba(${C.fill},.07)`; rr(bx, y + ch / 2 - 3, bw, 6, 3); ctx.fill();
       if (s > 0){
         const g = ctx.createLinearGradient(bx, 0, bx + bw, 0); g.addColorStop(0, '#9A8FD6'); g.addColorStop(1, PEACH);
         ctx.fillStyle = g; rr(bx, y + ch / 2 - 3, bw * clamp(Math.log(rat) / Math.log(25)) * ease(s), 6, 3); ctx.fill();
@@ -95,7 +103,8 @@ export function initSelmap(root){
     const sy = H - 32;
     ctx.globalAlpha = fade; ctx.font = MONO; ctx.textAlign = 'left'; ctx.fillStyle = INK;
     ctx.fillText(done ? 'Off-target binding designed out' : `Round ${cur + 1} · ${['designing for the target site', 'building the candidate', 'binding measured on 6 proteins', 'off-target hits feed the next design'][step]}`, pad, sy);
-    ctx.globalAlpha = 1; ctx.fillStyle = DIM; ctx.textAlign = 'right'; ctx.fillText(W < 420 ? 'Illustrative' : 'Illustrative values', W - pad, sy);
+    // narrow cards: the label moves to the top corner so the status line has the full width
+    ctx.globalAlpha = 1; ctx.fillStyle = DIM; ctx.textAlign = 'right'; ctx.fillText('Illustrative values', W - pad, W < 520 ? 32 : sy);
     ctx.textAlign = 'left'; ctx.globalAlpha = 1;
   });
 }
