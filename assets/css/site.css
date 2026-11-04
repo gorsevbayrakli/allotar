@@ -120,7 +120,7 @@ html[data-tone=navy] .nav ul a.cta{background:#fff;color:var(--navy)}
 .hero .wrap{position:relative;z-index:2;width:100%;pointer-events:none}
 .hero .wrap > *{pointer-events:auto}
 .hero h1{max-width:12ch;margin:24px 0 24px}
-.hero.short{min-height:76vh}
+.hero.short{min-height:100vh;min-height:100svh}   /* dark heroes fill the screen so the light section below never shows its dark text on navy */
 .hero.short h1{max-width:18ch;font-size:clamp(34px,min(4.2vw,7.5vh),56px)}
 .tags{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
 .tags span{font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;padding:8px 16px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.6);backdrop-filter:blur(8px);color:var(--soft)}

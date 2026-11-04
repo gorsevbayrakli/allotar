@@ -47,18 +47,9 @@ export function loadProtein(){
   return proteinPromise;
 }
 
-// textbook "Pac-Man" view of adenylate kinase: CORE as the body with LID and NMP as the jaws around the open
-// cleft. Returns the rotation that brings the structure into that view.
-export function pacmanView(P, roll = -103 * Math.PI / 180){
-  const cen = k => { const c = new THREE.Vector3(); let n = 0; for (let i = 0; i < P.N; i++) if (P.dom[i] === k){ c.x += P.P0[i*3]; c.y += P.P0[i*3+1]; c.z += P.P0[i*3+2]; n++; } return c.divideScalar(n); };
-  const core = cen(0), nmp = cen(1), lid = cen(2);
-  const u = lid.clone().add(nmp).multiplyScalar(.5).sub(core).normalize();            // body → mouth: screen right
-  const v = lid.clone().sub(nmp); v.addScaledVector(u, -v.dot(u)).normalize();          // NMP → LID: screen up
-  const w = new THREE.Vector3().crossVectors(u, v);
-  const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(u, v, w).transpose());
-  // roll in the screen plane; the default matches the client's reference films: CORE on top, NMP left, LID lower right
-  return new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), roll).multiply(q);
-}
+// the view used in the client's reference films (scenario renders): LID on top, CORE as the body, NMP bulging
+// to the right, allosteric site A facing the viewer. Fitted to the films' silhouette; applies to the raw coordinates.
+export function pacmanView(){ return new THREE.Quaternion(-.4134, -.1949, -.8562, -.2409).normalize(); }
 
 // ---------- stage: renderer + bloom, sized to its canvas ----------
 // light: transparent canvas over a light page, no bloom, glow points drawn as soft opaque dots

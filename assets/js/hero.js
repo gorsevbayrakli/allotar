@@ -165,7 +165,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
         V.copy(group.position).project(camera);
         fitY += ((1 - V.y) / 2 * S.h - (top + bot) / 2) / ppw * k;   // nudge until the protein's centre sits mid-band
       }
-      group.position.set(narrow ? .4 : 3.4, phone ? fitY + p * 1.2 : narrow ? 2.5 + p * 1.2 : .45 + p * 1.2, 0);
+      group.position.set(narrow ? .4 : 3.4, phone ? fitY + p * 1.2 : narrow ? 2.2 + p * 1.2 : -.1 + p * 1.2, 0);   // the film view stands taller, so it sits a little lower
       group.scale.setScalar(phone ? fitS : narrow ? .85 : 1);
       group.rotation.set(my * .15, .3 * Math.sin(t * .25) + p * 1.6 + mx * .35, 0);   // gentle sway keeps the Pac-Man view
       const lit = Math.floor(t / 3.2) % 3, litK = Math.sin(Math.PI * ((t / 3.2) % 1)) * prog(t, 3, 1);

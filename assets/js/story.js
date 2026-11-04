@@ -20,7 +20,7 @@ export async function initStory(canvas){
     const r = g.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(255,190,150,1)'); r.addColorStop(.35, 'rgba(242,163,124,.55)'); r.addColorStop(1, 'rgba(242,163,124,0)');
     g.fillStyle = r; g.fillRect(0, 0, 128, 128);
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0}));
-    sp.scale.setScalar(2.2); pivot.add(sp); return sp; })();
+    sp.scale.setScalar(1.5); pivot.add(sp); return sp; })();
   const siteIdx = P.sites[0];
 
   const panels = [...section.querySelectorAll('.panel')];
@@ -54,11 +54,11 @@ export async function initStory(canvas){
     fy += (ty - fy) * k; fs += (ts - fs) * k;
     group.position.set(x, narrow ? fy : 0, 0);
     group.scale.setScalar(narrow ? fs : 1);
-    // last panel: turn the protein so the lit site faces the viewer
-    group.rotation.set(.05, .3 * Math.sin(t * .3) * (1 - glow) + mx * .3 - 1.1 * glow, 0);
+    // site A faces the viewer in this view; the sway settles while it is lit
+    group.rotation.set(.05, .3 * Math.sin(t * .3) * (1 - .7 * glow) + mx * .3, 0);
     let hx = 0, hy = 0, hz = 0; for (const i of siteIdx){ hx += B[i*3]; hy += B[i*3+1]; hz += B[i*3+2]; }
     halo.position.set(hx / siteIdx.length * K, hy / siteIdx.length * K, hz / siteIdx.length * K);
-    halo.material.opacity = pulse * .9;
+    halo.material.opacity = pulse * .45;
     camera.position.set(0, .6, narrow ? 17 : 13);
     camera.lookAt(0, 0, 0);
     S.render();
