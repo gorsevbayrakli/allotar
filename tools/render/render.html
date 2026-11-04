@@ -1,0 +1,74 @@
+<!doctype html>
+<!-- Offline protein renderer (not part of the site). Path-traces adenylate kinase as space-filling atoms on a
+     transparent background, one frame per call; tools/render/render.py drives it and writes the image sequences
+     that the site plays (assets/img/seq/). Same coordinates, view and palette as the live scenes. -->
+<html><head><meta charset="utf-8"><title>render</title>
+<style>html,body{margin:0;background:transparent}canvas{display:block}</style>
+<script type="importmap">{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+  "three/examples/jsm/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/",
+  "three-mesh-bvh":"https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.7.8/build/index.module.js",
+  "three-gpu-pathtracer":"https://cdn.jsdelivr.net/npm/three-gpu-pathtracer@0.0.23/build/index.module.js"}}</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import {WebGLPathTracer, GradientEquirectTexture} from 'three-gpu-pathtracer';
+
+const d = await (await fetch('../../assets/data/protein.json')).json();
+const N = d.dom.length, P0 = d.p0, P1 = d.p1, RAD = d.rad.map(r => r / 10), K = .055;
+const siteOf = new Int8Array(N).fill(-1); ['A', 'B', 'C'].forEach((k, i) => d.sites[k].forEach(a => siteOf[a] = i));
+// the film view used on the site (gl.js pacmanView)
+const VIEW = new THREE.Quaternion(-.4134, -.1949, -.8562, -.2409).normalize();
+
+const renderer = new THREE.WebGLRenderer({antialias: false, alpha: true, preserveDrawingBuffer: true});
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setClearColor(0, 0); document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = null;
+// studio light: bright cool sky above, deep navy below, so the lower half falls into soft shadow
+const env = new GradientEquirectTexture(); env.topColor.set('#f4f1ff'); env.bottomColor.set('#0d1236'); env.exponent = 1.4; env.update();
+scene.environment = env; scene.environmentIntensity = 1;
+const key = new THREE.RectAreaLight(0xfff1e6, 9, 6, 6); key.position.set(-6, 7, 8); key.lookAt(0, 0, 0); scene.add(key);
+const rim = new THREE.RectAreaLight(0xa9b8ff, 7, 5, 5); rim.position.set(7, 1, -6); rim.lookAt(0, 0, 0); scene.add(rim);
+const camera = new THREE.PerspectiveCamera(26, 1, .1, 100);
+const pt = new WebGLPathTracer(renderer);
+pt.tiles.set(2, 2); pt.bounces = 6; pt.renderDelay = 0; pt.fadeDuration = 0; pt.minSamples = 0; pt.filterGlossyFactor = .5;
+
+const sphere = new THREE.IcosahedronGeometry(1, 3);   // ~640 triangles per atom, smooth under path tracing
+const lin = h => new THREE.Color(h);
+let mesh = null;
+
+// opts: lam 0 open → 1 closed, rotY/rotX radians on top of the view, glow 0..1 on site `site`, palette colours
+window.renderFrame = async ({w = 900, h = 1000, lam = 0, rotY = 0, rotX = 0, glow = 0, site = 0, samples = 160, dist = 11.5,
+  cols = ['#6b7cf0', '#9a8fe6', '#5c9be6'], siteCol = '#f2a37c', exposure = 1.05, swell = .45, y = 0} = {}) => {
+  renderer.setSize(w, h, false); renderer.toneMappingExposure = exposure;
+  camera.aspect = w / h; camera.updateProjectionMatrix(); camera.position.set(0, .15, dist); camera.lookAt(0, 0, 0);
+  const C = cols.map(lin), S = lin(siteCol), m = new THREE.Matrix4(), parts = [], litParts = [];
+  for (let i = 0; i < N; i++){
+    const j = i * 3, x = P0[j] + (P1[j] - P0[j]) * lam, yy = P0[j+1] + (P1[j+1] - P0[j+1]) * lam, z = P0[j+2] + (P1[j+2] - P0[j+2]) * lam;
+    const lit = siteOf[i] === site ? glow : 0, r = RAD[i] * K * (1 + swell * lit);
+    const g = sphere.clone(); g.applyMatrix4(m.makeScale(r, r, r).setPosition(x * K, yy * K, z * K));
+    const c = C[d.dom[i]].clone().lerp(S, lit), n = g.attributes.position.count, col = new Float32Array(n * 3);
+    for (let k = 0; k < n; k++){ col[k*3] = c.r; col[k*3+1] = c.g; col[k*3+2] = c.b; }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.deleteAttribute('uv'); (lit > .02 ? litParts : parts).push(g);
+  }
+  if (mesh) mesh.traverse(o => o.geometry && o.geometry.dispose());
+  const geo = mergeGeometries(parts);
+  // satin plastic, like a studio molecular render (sheen and clearcoat render black in this path tracer build,
+  // so the gloss comes from a low roughness and a stronger specular lobe)
+  const mat = new THREE.MeshPhysicalMaterial({vertexColors: true, roughness: .34, metalness: 0, specularIntensity: 1, ior: 1.6});
+  mesh = new THREE.Group(); mesh.add(new THREE.Mesh(geo, mat));
+  // the lit site emits its own warm light, so it glows out of the pocket and tints its neighbours
+  if (litParts.length) mesh.add(new THREE.Mesh(mergeGeometries(litParts), new THREE.MeshPhysicalMaterial({vertexColors: true, roughness: .3,
+    emissive: S, emissiveIntensity: .75 * glow})));
+  const pivot = new THREE.Group(); pivot.quaternion.copy(VIEW);
+  const grp = new THREE.Group(); grp.rotation.set(rotX, rotY, 0); grp.position.y = y;
+  scene.clear(); scene.add(key, rim, grp); grp.add(pivot); pivot.add(mesh);
+  pt.setScene(scene, camera);
+  while (pt.samples < samples){ pt.renderSample(); if (pt.samples % 8 < 1) await new Promise(r => requestAnimationFrame(r)); }
+  return renderer.domElement.toDataURL('image/png');
+};
+window.ready = true;
+</script>
+</body></html>

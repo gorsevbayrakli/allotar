@@ -2,8 +2,9 @@
 // Lights tell the sampling story. Each light is one sampled conformation: it appears where it is found and
 // stays until the loop ends. First the deepest well fills, then samples appear along the minimum path, partly
 // filling each small local minimum on the way before moving on, and fill the second-deepest well (forward,
-// yellow); the way back runs along a different route through its own local minima (backward, blue). Scrolling dissolves the protein surface into its atoms.
-import {THREE, createStage, makePoints, makeAtoms, fillAtoms, loadProtein, pacmanView, animate, clamp, ease, prog, rng, hdr, lin, rgb, K, DOM_COLORS} from './gl.js';
+// yellow); the way back runs along a different route through its own local minima (backward, blue). The protein is a path-traced render sequence (seq.js) drawn on its own layer.
+import {loadSeq, canvas2d} from './seq.js';
+import {THREE, createStage, makePoints, animate, clamp, ease, prog, rng, hdr, rgb} from './gl.js';
 
 // ---------- landscape (same function on the GPU and the CPU) ----------
 const BASE_Y = -2.6, AMP = .75;
@@ -111,25 +112,16 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
   const DUST = []; { const r = rng(9); for (let i = 0; i < 300; i++) DUST.push([(r() - .5) * 40, (r() - .1) * 14, -r() * 30 + 4, r() * 6.28, .1 + r() * .25, .02 + r() * .05, .1 + r() * .4]); }
   const DCOL = hdr('#9fb8ff', 1.1);
 
-  // protein
-  let P = null, mc = null, atoms = null, B = null, SCAT = null, group = null;
+  // protein: path-traced render sequence (tools/render) on its own 2D layer above the landscape
+  let seq = null, layer = null;
   if (mode === 'protein'){
-    P = await loadProtein();
-    group = new THREE.Group(); scene.add(group);
-    const pivot = new THREE.Group(); pivot.quaternion.copy(pacmanView(P)); group.add(pivot);
-    mc = makeAtoms(P); pivot.add(mc);
-    atoms = makePoints(P.N, S.glow); pivot.add(atoms.points);
-    B = new Float32Array(P.N * 3); SCAT = new Float32Array(P.N * 3);
-    const r = rng(7);
-    for (let i = 0; i < P.N; i++){ const u = r()*2 - 1, th = r()*6.283, s = Math.sqrt(1 - u*u), d = 50 + r()*110;
-      SCAT[i*3] = P.CC.x + Math.cos(th)*s*d; SCAT[i*3+1] = P.CC.y + u*d*.6; SCAT[i*3+2] = P.CC.z + Math.sin(th)*s*d; }
+    const el = document.createElement('canvas'); el.className = 'hero-seq'; el.setAttribute('aria-hidden', 'true');
+    canvas.after(el); layer = canvas2d(el); seq = loadSeq('hero', 48);
   }
-  const SITE = lin('#F2A37C'), C_SITE = light ? rgb('#e9783f') : hdr('#F2A37C', 1.8), C_ICE = light ? rgb('#5b6aa3') : hdr('#9cc0ff', .9);
 
   let scrollP = 0, mx = 0, my = 0, tmx = 0, tmy = 0;
-  // phones: keep the protein inside the band between the nav and the headline, whatever the screen height
-  const h1 = canvas.closest('.hero')?.querySelector('h1'), V = new THREE.Vector3();
-  let fitY = 2.5, fitS = .7;
+  // phones: the protein sits in the band between the nav and the headline, whatever the screen height
+  const h1 = canvas.closest('.hero')?.querySelector('h1');
   addEventListener('scroll', () => { scrollP = clamp(scrollY / innerHeight); }, {passive: true});
   addEventListener('pointermove', e => { tmx = e.clientX / innerWidth - .5; tmy = e.clientY / innerHeight - .5; });
 
@@ -153,34 +145,17 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
     dust.flush();
 
     // protein
-    if (P){
-      const a = ease(prog(t, .3, 2.8)), surf = ease(prog(t, 1.6, 1.6)) * (1 - p * .95);
-      P.conform(B, t, .35 - .35 * Math.cos(2 * Math.PI * t / 7));
-      const phone = S.w < 760 && h1;
-      const dist = camera.position.distanceTo(group.position);   // 0 on the very first frame, before the camera is placed
-      if (phone && p < .02 && dist > 1){
-        const top = 88, bot = h1.getBoundingClientRect().top - canvas.getBoundingClientRect().top - 16, k = Math.min(1, dt * 4);
-        const ppw = S.h / (2 * dist * Math.tan(camera.fov * Math.PI / 360));   // pixels per world unit
-        fitS += (clamp((bot - top) / (3.6 * ppw), .35, .7) - fitS) * k;
-        V.copy(group.position).project(camera);
-        fitY += ((1 - V.y) / 2 * S.h - (top + bot) / 2) / ppw * k;   // nudge until the protein's centre sits mid-band
-      }
-      group.position.set(narrow ? .4 : 3.4, phone ? fitY + p * 1.2 : narrow ? 2.2 + p * 1.2 : -.1 + p * 1.2, 0);   // the film view stands taller, so it sits a little lower
-      group.scale.setScalar(phone ? fitS : narrow ? .85 : 1);
-      group.rotation.set(my * .15, .3 * Math.sin(t * .25) + p * 1.6 + mx * .35, 0);   // gentle sway keeps the Pac-Man view
-      const lit = Math.floor(t / 3.2) % 3, litK = Math.sin(Math.PI * ((t / 3.2) % 1)) * prog(t, 3, 1);
-      if (surf > .005) fillAtoms(mc, P, B, i => { const c = DOM_COLORS[P.dom[i]]; const k = P.siteOf[i] === lit ? litK * .85 : 0; return k ? [c[0] + (SITE[0] - c[0]) * k, c[1] + (SITE[1] - c[1]) * k, c[2] + (SITE[2] - c[2]) * k, k] : c; }, surf, i => P.siteOf[i] === lit ? 1 + .5 * litK : 1);   // spheres grow in as the atoms assemble
-      mc.visible = surf > .005;
-      atoms.n = 0;
-      const twinkle = .02 + .45 * Math.sin(Math.PI * a) + p * .35, burst = 1 + p * .5;
-      for (let i = 0; i < P.N; i++){
-        const j = i*3, dx = B[j] - P.CC.x, dy = B[j+1] - P.CC.y, dz = B[j+2] - P.CC.z, dl = Math.hypot(dx, dy, dz) || 1, push = P.RAD[i] * 1.15 / dl;
-        const x = P.CC.x + (dx * (1 + push)) * burst, y = P.CC.y + (dy * (1 + push)) * burst, z = P.CC.z + (dz * (1 + push)) * burst;
-        const px = (SCAT[j] + (x - SCAT[j]) * a) * K, py = (SCAT[j+1] + (y - SCAT[j+1]) * a) * K, pz = (SCAT[j+2] + (z - SCAT[j+2]) * a) * K;
-        const site = P.siteOf[i] === lit && litK > .05;
-        atoms.push(px, py, pz, site ? C_SITE : C_ICE, site ? Math.max(.25 * litK, twinkle * .5) : twinkle * (.7 + .3 * Math.sin(t * 1.2 + P.phase[i] * 3)), site ? .13 : .05);
-      }
-      atoms.flush();
+    if (seq){
+      const W = layer.w, H = layer.h, phone = W < 760 && h1, narrow2 = W < 1000, ctx = layer.ctx;
+      let cx, cy, bh;
+      if (phone){ const top = 88, bot = h1.getBoundingClientRect().top - canvas.getBoundingClientRect().top - 16; bh = Math.max(120, bot - top); cy = (top + bot) / 2; cx = W / 2; }
+      else if (narrow2){ bh = H * .44; cx = W / 2; cy = 88 + bh / 2; }
+      else { bh = Math.min(H * .64, W * .46); cx = W * .75; cy = H * .44; }
+      const intro = ease(prog(t, .2, 1.6)), sc = (.94 + .06 * intro) * bh, bw = sc * seq.ratio;
+      ctx.clearRect(0, 0, W, H);
+      ctx.globalAlpha = intro * clamp(1 - p * 1.15);
+      seq.draw(ctx, t * 6, cx - bw / 2 + mx * 14, cy - sc / 2 - p * H * .22 + my * 8, bw, sc, true);   // 48 frames, 8 s loop
+      ctx.globalAlpha = 1;
       camera.position.set(mx * .8, 2.2 + p * .8 - my * .4, (narrow ? 18 : 12.5) - p * 2.5);
       camera.lookAt(narrow ? 0 : -.6, -1.4 - p * .4, -3);
     } else {
