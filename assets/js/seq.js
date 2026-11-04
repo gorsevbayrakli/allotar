@@ -13,7 +13,7 @@ export function loadSeq(name, count){
   // first frame, then every 4th, then the rest: the sequence is usable early and fills in
   const order = [...Array(count).keys()].sort((a, b) => (a % 4 !== 0) - (b % 4 !== 0) || a - b);
   const first = load(order[0]);
-  first.then(async () => { for (let i = 1; i < order.length; i += 6) await Promise.all(order.slice(i, i + 6).map(load)); });
+  first.then(async () => { for (let i = 1; i < order.length; i += 6) await Promise.all(order.slice(i, i + 6).map(k => load(k))); });
   const near = k => { for (let d = 0; d < count; d++){ const a = frames[(k + d) % count], b = frames[(k - d + count) % count]; if (a) return a; if (b) return b; } return null; };
   return {
     count, first,
