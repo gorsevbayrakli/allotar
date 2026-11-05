@@ -32,7 +32,14 @@ def states():
     # them on panel changes; a scrubbed in-between sequence blends shapes and reads as a trembling double outline.
     return [dict(lam=0, glow=0), dict(lam=1, glow=0), dict(lam=1, glow=1)]
 
-JOBS = {'states': (states, dict(w=1400, h=1558, samples=384, grow=1.1, dist=10.2, rotY=-.3, rotX=.05, site=0, swell=0)),
+def morph(n=20):
+    # home story: open → closed as a short clip played on the panel change (not scrubbed, never blended). Same pose and
+    # settings as `states`, so the end frame matches the lit still, which then fades in on it. lam is eased here so
+    # the clip can play at a constant frame rate.
+    return [dict(lam=ease(k / (n - 1)), glow=0) for k in range(n)]
+
+JOBS = {'morph': (morph, dict(w=1400, h=1558, samples=384, grow=1.1, dist=10.2, rotY=-.3, rotX=.05, site=0, swell=0)),
+        'states': (states, dict(w=1400, h=1558, samples=384, grow=1.1, dist=10.2, rotY=-.3, rotX=.05, site=0, swell=0)),
         'story': (story, dict(w=1000, h=1112, samples=128, grow=1.1, dist=10.2)),
         'still': (still, dict(w=1600, h=1780, samples=512, grow=1.1, dist=10.2))}
 
