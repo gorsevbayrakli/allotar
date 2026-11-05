@@ -1,29 +1,32 @@
-// Pinned protein for the home page story: while the text panels scroll past, the protein drifts from side
-// to side, closes from the open (4AKE) to the closed (1AKE) state, and lights up its allosteric site. On the
-// fourth panel it gives way to the selectivity map (selmap.js), which this script places on phones.
-// The protein is a path-traced render sequence (tools/render) scrubbed by the scroll position.
-import {animate, clamp, ease} from './gl.js';
-import {loadSeq, canvas2d} from './seq.js';
-
-const FRAMES = 40;   // story sequence: frames 0–23 close the protein, 24–39 light the site
+// Pinned protein for the home page story: while the text panels scroll past, the protein drifts from side to side
+// and changes state with them: open (4AKE) on the first panel, closed (1AKE) on the second, its allosteric site lit
+// on the third. On the fourth panel it gives way to the selectivity map (selmap.js), which this script places on
+// phones. Each state is one path-traced still (tools/render, job "states"), all from the same angle; a state change
+// is a short dissolve while the protein slides, and in between the image stays still and sharp.
+import {animate, clamp} from './gl.js';
+import {canvas2d} from './seq.js';
 
 export function initStory(canvas){
   const section = canvas.closest('[data-story]');
-  const L = canvas2d(canvas), seq = loadSeq('story', FRAMES);
+  const L = canvas2d(canvas);
+  const size = Math.min(innerWidth, innerHeight * .8) < 700 ? 's' : 'l';
+  const img = [0, 1, 2].map(k => { const im = new Image(); im.decoding = 'async'; im.src = new URL(`../img/protein/story-${k}-${size}.webp`, import.meta.url).href; return im; });
+  const ready = im => im.complete && im.naturalWidth > 0;
   const panels = [...section.querySelectorAll('.panel')], map = section.querySelector('.selmap');
   const gut = () => parseFloat(getComputedStyle(section).getPropertyValue('--gut')) || 24;
-  let mx = 0, tmx = 0, x = .2, f = 0, cy = 0, bh = 0;
+  let mx = 0, tmx = 0, x = .2, s = 0, cy = 0, bh = 0;
   addEventListener('pointermove', e => { tmx = e.clientX / innerWidth - .5; });
 
   animate(canvas, (dt, t) => {
     const r = section.getBoundingClientRect(), p = clamp(-r.top / Math.max(1, r.height - innerHeight));
     const W = L.w, H = L.h, narrow = W < 860, k = Math.min(1, dt * 3), ctx = L.ctx;
-    // the protein's three panels take the first three quarters of the scroll; q runs 0–1 over them
-    const q = clamp(p * 4 / 3);
-    // open on the right, closing on the left, allosteric site lit on the right; it fades out for the fourth panel
-    const side = narrow ? 0 : (q < .33 ? .2 : q < .66 ? -.2 : .2);
+    const n = Math.min(panels.length - 1, Math.floor(p * panels.length));   // same panel index as site.js
+    // open on the right, closed on the left, lit on the right; it fades out for the fourth panel
+    const side = narrow ? 0 : [.2, -.2, .2, .2][n];
     x += (side - x) * k;
-    f += ((FRAMES - 1) * clamp(q < .62 ? ease(clamp((q - .25) / .37)) * .6 : .6 + .4 * ease(clamp((q - .62) / .22))) - f) * k;
+    // state: moves to the panel's still at a fixed rate, so a dissolve takes about half a second
+    const target = Math.min(2, n);
+    s += Math.sign(target - s) * Math.min(Math.abs(target - s), dt * 2.2);
     const show = 1 - clamp((p - .7) / .06);
     mx += (tmx - mx) * k;
     // phones: the text panels sit at the bottom, so the protein (and the map) fill the band between the nav and
@@ -36,12 +39,13 @@ export function initStory(canvas){
       if (map){ const mw = Math.min(W - 2 * gut(), tbh * 1.25), mh = Math.min(tbh, mw * .92); Object.assign(map.style, {top: `${top + (tbh - mh) / 2}px`, height: `${mh}px`, width: `${mw}px`}); }
     } else if (map) Object.assign(map.style, {top: '', height: '', width: ''});
     cy = cy ? cy + (tcy - cy) * k : tcy; bh = bh ? bh + (tbh - bh) * k : tbh;
-    const bw = bh * seq.ratio;
     ctx.clearRect(0, 0, W, H);
-    if (show <= 0) return;
-    ctx.globalAlpha = show;
-    // a single image moving is drawn at sub-pixel positions (smooth glide, no 1 px steps)
-    seq.draw(ctx, f, W / 2 + x * W - bw / 2 + mx * 12, cy - bh / 2, bw, bh);
+    const i = Math.floor(s), a = img[i], b = img[Math.min(2, i + 1)], f = s - i;
+    if (show <= 0 || !ready(a)) return;
+    const bw = bh * a.naturalWidth / a.naturalHeight, x0 = W / 2 + x * W - bw / 2 + mx * 12, y0 = cy - bh / 2;
+    // sub-pixel positions: a single image gliding stays smooth
+    ctx.globalAlpha = show; ctx.drawImage(a, x0, y0, bw, bh);
+    if (f > .002 && ready(b)){ ctx.globalAlpha = show * f; ctx.drawImage(b, x0, y0, bw, bh); }
     ctx.globalAlpha = 1;
   });
 }

@@ -27,7 +27,13 @@ def still():
     # and floats the image; identical geometry means nothing in the protein can shimmer.
     return [dict(lam=.18, rotY=0, rotX=.05, glow=g, site=0, swell=0) for g in (0, 1)]
 
-JOBS = {'story': (story, dict(w=1000, h=1112, samples=128, grow=1.1, dist=10.2)),
+def states():
+    # home story: open, closed, closed with the allosteric site lit, all from one angle. The page dissolves between
+    # them on panel changes; a scrubbed in-between sequence blends shapes and reads as a trembling double outline.
+    return [dict(lam=0, glow=0), dict(lam=1, glow=0), dict(lam=1, glow=1)]
+
+JOBS = {'states': (states, dict(w=1400, h=1558, samples=384, grow=1.1, dist=10.2, rotY=-.3, rotX=.05, site=0, swell=0)),
+        'story': (story, dict(w=1000, h=1112, samples=128, grow=1.1, dist=10.2)),
         'still': (still, dict(w=1600, h=1780, samples=512, grow=1.1, dist=10.2))}
 
 async def main():
