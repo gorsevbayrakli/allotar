@@ -154,7 +154,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
       let cx, cy, bh;
       if (phone){ const top = 88, bot = h1.getBoundingClientRect().top - canvas.getBoundingClientRect().top - 16; bh = Math.max(120, bot - top); cy = (top + bot) / 2; cx = W / 2; }
       else if (narrow2){ bh = H * .44; cx = W / 2; cy = 88 + bh / 2; }
-      else { bh = Math.min(H * .54, W * .38); cx = W * .74; cy = H * .45; }
+      else { bh = Math.min(H * .42, W * .3); cx = W * .73; cy = H * .46; }
       const intro = ease(prog(t, .2, 1.6)), sc = (.94 + .06 * intro) * bh * (1 + .012 * Math.sin(t * .4)), bw = sc * seq.ratio;
       // slow float and a soft pulse of the lit site (10 s); sub-pixel positions keep the glide smooth
       const x0 = cx - bw / 2 + mx * 14, y0 = cy - sc / 2 - p * H * .22 + my * 8 + 6 * Math.sin(t * .55), glow = Math.pow(.5 - .5 * Math.cos(t * .628), 2);
