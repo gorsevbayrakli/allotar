@@ -6,6 +6,7 @@ usage: python pack.py <job>   reads tools/render/out/<job>/*.png
   states: writes assets/img/protein/story-{0,1,2}-{l,s}.webp (open, closed, lit; same crop).
   morph: writes assets/img/protein/morph/{l,s}/NNN.webp (open → closed clip) plus lit.webp, the lit still from the
   states job (out/states/002.png), on the same crop so it fades in exactly over the clip's last frame.
+  breathe: writes assets/img/protein/breathe/{l,s}/NNN.webp (home hero loop, played forwards and backwards).
   still: writes assets/img/protein/hero-{l,s}.webp and hero-lit-{l,s}.webp (same crop, so they cross-fade in place).
 """
 import pathlib, sys
@@ -21,7 +22,7 @@ ims = [Image.open(f).convert('RGBA') for f in src]
 # cancels most of the grain. Loops wrap around, scrubbed sequences clamp at the ends.
 import numpy as np
 LOOP = job == 'hero'
-W = [1, 2, 3, 2, 1] if LOOP else [1] if job in ('still', 'states', 'morph') else [1, 2, 1]
+W = [1, 2, 3, 2, 1] if LOOP else [1] if job in ('still', 'states', 'morph', 'breathe') else [1, 2, 1]
 arr = [np.asarray(im, dtype=np.float32) for im in ims]
 n, h = len(arr), len(W) // 2
 def tap(k): return arr[k % n] if LOOP else arr[min(n - 1, max(0, k))]
@@ -37,12 +38,14 @@ for im in ims:
 pad = 12
 box = (max(0, box[0] - pad), max(0, box[1] - pad), min(ims[0].width, box[2] + pad), min(ims[0].height, box[3] + pad))
 print(job, len(ims), 'frames, crop', box)
-SIZES = {'still': (('l', 1100), ('s', 640)), 'states': (('l', 1000), ('s', 640)), 'morph': (('l', 1000), ('s', 640)), 'story': (('l', 820), ('s', 560))}.get(job, (('l', 720), ('s', 340)))
+SIZES = {'still': (('l', 1100), ('s', 640)), 'states': (('l', 1000), ('s', 640)), 'morph': (('l', 1000), ('s', 640)), 'breathe': (('l', 1000), ('s', 520)), 'story': (('l', 820), ('s', 560))}.get(job, (('l', 720), ('s', 340)))
 for size, maxw in SIZES:
     for k, im in enumerate(ims):
         c = im.crop(box)
         if c.width > maxw: c = c.resize((maxw, round(c.height * maxw / c.width)), Image.LANCZOS)
-        if job == 'morph':
+        if job == 'breathe':
+            out = ROOT / 'assets/img/protein/breathe' / size; out.mkdir(parents=True, exist_ok=True); f = out / f'{k:03d}.webp'
+        elif job == 'morph':
             out = ROOT / 'assets/img/protein/morph' / size; out.mkdir(parents=True, exist_ok=True)
             f = out / ('lit.webp' if k == len(ims) - 1 else f'{k:03d}.webp')
         elif job == 'states':
@@ -51,5 +54,5 @@ for size, maxw in SIZES:
             out = ROOT / 'assets/img/protein'; out.mkdir(parents=True, exist_ok=True); f = out / f"{('hero', 'hero-lit')[k]}-{size}.webp"
         else:
             out = ROOT / 'assets/img/seq' / job / size; out.mkdir(parents=True, exist_ok=True); f = out / f'{k:03d}.webp'
-        c.save(f, 'WEBP', quality=82, method=6, alpha_quality=90)
+        c.save(f, 'WEBP', quality=72 if job == 'breathe' else 82, method=6, alpha_quality=80 if job == 'breathe' else 90)
     print(size, c.size, f'{sum(p.stat().st_size for p in out.glob("*.webp")) / 1e6:.2f} MB')

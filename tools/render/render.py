@@ -38,7 +38,18 @@ def morph(n=20):
     # the clip can play at a constant frame rate.
     return [dict(lam=ease(k / (n - 1)), glow=0) for k in range(n)]
 
-JOBS = {'morph': (morph, dict(w=1400, h=1558, samples=384, grow=1.1, dist=10.2, rotY=-.3, rotX=.05, site=0, swell=0)),
+def breathe(n=60):
+    # home hero: one half of a breathing cycle (lid opening a little, a slow turn, the allosteric site warming up).
+    # The page plays it forwards then backwards; cosine spacing makes the motion ease to rest at both ends, so the
+    # turnaround is seamless. One full render per frame, never blended.
+    out = []
+    for k in range(n):
+        u = .5 - .5 * math.cos(math.pi * k / (n - 1))
+        out.append(dict(lam=.05 + .45 * u, rotY=-.22 + .44 * u, rotX=.05 + .04 * u, glow=u * u, site=0, swell=0))
+    return out
+
+JOBS = {'breathe': (breathe, dict(w=1400, h=1558, samples=384, grow=1.1, dist=10.2)),
+        'morph': (morph, dict(w=1400, h=1558, samples=384, grow=1.1, dist=10.2, rotY=-.3, rotX=.05, site=0, swell=0)),
         'states': (states, dict(w=1400, h=1558, samples=384, grow=1.1, dist=10.2, rotY=-.3, rotX=.05, site=0, swell=0)),
         'story': (story, dict(w=1000, h=1112, samples=128, grow=1.1, dist=10.2)),
         'still': (still, dict(w=1600, h=1780, samples=512, grow=1.1, dist=10.2))}

@@ -2,9 +2,11 @@
 // Lights tell the sampling story. Each light is one sampled conformation: it appears where it is found and
 // stays until the loop ends. First the deepest well fills, then samples appear along the minimum path, partly
 // filling each small local minimum on the way before moving on, and fill the second-deepest well (forward,
-// yellow); the way back runs along a different route through its own local minima (backward, blue). The protein is a path-traced still (tools/render) drawn on its own layer: two renders of one pose, the second with
-// the allosteric site lit, cross-faded while the image floats. One pose means nothing inside the protein moves, so
-// nothing can shimmer.
+// yellow); the way back runs along a different route through its own local minima (backward, blue). The protein is a path-traced loop (tools/render, job "breathe") drawn on its own layer: 60 full renders of half
+// a breathing cycle (the lid opens a little, the protein turns, the allosteric site warms up), played forwards then
+// backwards with cosine timing so it eases to rest at both ends and never jumps. Neighbouring frames differ by a
+// pixel or two, so the soft blend between them reads as motion, not as a double image. Until the whole loop has
+// loaded, the first frame floats on its own.
 import {canvas2d} from './seq.js';
 import {THREE, createStage, makePoints, animate, clamp, ease, prog, rng, hdr, rgb} from './gl.js';
 
@@ -67,6 +69,7 @@ const route = (a, m, b) => new THREE.CatmullRomCurve3([xz(a[0], a[1]), xz(m[0], 
 const FWD = [route(W1, [-1.5, -6.7], F1), route(F1, [.5, -6.1], F2), route(F2, [2.6, -6.2], F3), route(F3, [4.7, -7.6], W2)];
 const BACK = [route(W2, [4.9, -10.5], R1), route(R1, [1.6, -11.8], R2), route(R2, [-1.8, -10.2], W1)];
 const LOOP = 31, FADE_AT = 28.8;
+const BF = 60, BREATH = 9;   // protein loop: frames in half a cycle, seconds for a whole cycle
 // every sample: where it appears, when, and whether it belongs to the forward or the backward transition
 function buildSamples(){
   const r = rng(21), S = [];
@@ -119,8 +122,12 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
   if (mode === 'protein'){
     const el = document.createElement('canvas'); el.className = 'hero-seq'; el.setAttribute('aria-hidden', 'true');
     canvas.after(el); layer = canvas2d(el);
-    const size = Math.min(innerWidth, innerHeight * .8) < 700 ? 's' : 'l', img = n => { const im = new Image(); im.decoding = 'async'; im.src = new URL(`../img/protein/${n}-${size}.webp`, import.meta.url).href; return im; };
-    seq = {base: img('hero'), lit: img('hero-lit'), get ratio(){ return this.base.naturalWidth ? this.base.naturalWidth / this.base.naturalHeight : .85; }};
+    const size = Math.min(innerWidth, innerHeight * .8) < 700 ? 's' : 'l';
+    const img = k => { const im = new Image(); im.decoding = 'async'; im.src = new URL(`../img/protein/breathe/${size}/${String(k).padStart(3, '0')}.webp`, import.meta.url).href; return im; };
+    const first = img(0), frames = [first];
+    first.decode?.().catch(() => {}).finally(() => { for (let k = 1; k < BF; k++) frames[k] = img(k); });
+    const ok = im => im && im.complete && im.naturalWidth > 0;
+    seq = {frames, first, ok, get all(){ return frames.length === BF && frames.every(ok); }, get ratio(){ return ok(first) ? first.naturalWidth / first.naturalHeight : .85; }};
   }
 
   let scrollP = 0, mx = 0, my = 0, tmx = 0, tmy = 0;
@@ -156,14 +163,17 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
       else if (narrow2){ bh = H * .44; cx = W / 2; cy = 88 + bh / 2; }
       else { bh = Math.min(H * .42, W * .3); cx = W * .73; cy = H * .46; }
       const intro = ease(prog(t, .2, 1.6)), sc = (.94 + .06 * intro) * bh * (1 + .012 * Math.sin(t * .4)), bw = sc * seq.ratio;
-      // slow float and a soft pulse of the lit site (10 s); sub-pixel positions keep the glide smooth
-      const x0 = cx - bw / 2 + mx * 14, y0 = cy - sc / 2 - p * H * .22 + my * 8 + 6 * Math.sin(t * .55), glow = Math.pow(.5 - .5 * Math.cos(t * .628), 2);
+      // slow float; sub-pixel positions keep the glide smooth
+      const x0 = cx - bw / 2 + mx * 14, y0 = cy - sc / 2 - p * H * .22 + my * 8 + 6 * Math.sin(t * .55);
       ctx.clearRect(0, 0, W, H);
       const a = intro * clamp(1 - p * 1.15);
-      if (seq.base.complete && seq.base.naturalWidth){
-        ctx.globalAlpha = a; ctx.drawImage(seq.base, x0, y0, bw, sc);
-        if (seq.lit.complete && seq.lit.naturalWidth && glow > .01){ ctx.globalAlpha = a * glow; ctx.drawImage(seq.lit, x0, y0, bw, sc); }
-      }
+      if (seq.all){
+        // the loop starts at frame 0 whenever it starts: forwards over the first half, backwards over the second
+        if (seq.t0 === undefined) seq.t0 = t;
+        const c = ((t - seq.t0) / BREATH) % 1, f = (c < .5 ? c * 2 : 2 - c * 2) * (BF - 1), i = Math.min(BF - 2, Math.floor(f)), w = f - i;
+        ctx.globalAlpha = a; ctx.drawImage(seq.frames[i], x0, y0, bw, sc);
+        if (w > .01){ ctx.globalAlpha = a * w; ctx.drawImage(seq.frames[i + 1], x0, y0, bw, sc); }
+      } else if (seq.ok(seq.first)){ ctx.globalAlpha = a; ctx.drawImage(seq.first, x0, y0, bw, sc); }
       ctx.globalAlpha = 1;
       camera.position.set(mx * .8, 2.2 + p * .8 - my * .4, (narrow ? 18 : 12.5) - p * 2.5);
       camera.lookAt(narrow ? 0 : -.6, -1.4 - p * .4, -3);
