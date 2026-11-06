@@ -114,12 +114,12 @@ html[data-tone=navy] .nav ul a.cta{background:#fff;color:var(--navy)}
 .hero::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(255,255,255,.95) 0%,rgba(255,255,255,.9) 34%,rgba(255,255,255,.55) 50%,rgba(255,255,255,0) 66%)}
 .hero .lead{color:#2f365c}
 /* dark hero (home): navy veil behind the text, light copy, glassy tags */
-.hero[data-theme=navy]::before{background:linear-gradient(90deg,rgba(10,16,48,.85) 0%,rgba(10,16,48,.7) 34%,rgba(10,16,48,.3) 50%,rgba(10,16,48,0) 66%)}
-.hero[data-theme=navy] .lead{color:var(--soft)}
+.hero[data-theme=navy]::before{background:linear-gradient(90deg,rgba(10,16,48,.9) 0%,rgba(10,16,48,.8) 34%,rgba(10,16,48,.3) 50%,rgba(10,16,48,0) 66%)}
+.hero[data-theme=navy] .lead{color:rgba(240,243,255,.94);text-shadow:0 0 16px rgba(10,16,48,.9),0 1px 2px rgba(10,16,48,.8)}
 .hero[data-theme=navy] .tags span{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14)}
 .hero .wrap{position:relative;z-index:2;width:100%;pointer-events:none}
 .hero .wrap > *{pointer-events:auto}
-.hero h1{max-width:12ch;margin:24px 0 24px}
+.hero h1{max-width:min(20ch,58vw);margin:24px 0 24px;text-wrap:balance}
 .hero.short{min-height:100vh;min-height:100svh}   /* dark heroes fill the screen so the light section below never shows its dark text on navy */
 .hero.short h1{max-width:18ch;font-size:clamp(34px,min(4.2vw,7.5vh),56px)}
 .tags{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
@@ -507,7 +507,7 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   body{font-size:16px}
   .logo{font-size:24px;gap:8px;margin-left:-4px} .logo img{height:42px}
   .hero:not(.short){align-items:flex-end;padding-bottom:64px}
-  .hero:not(.short) h1{font-size:clamp(40px,11vw,56px)}
+  .hero:not(.short) h1{font-size:clamp(32px,9.6vw,56px);max-width:none}
   .hero .tags{display:none}
   .hero .btns{flex-direction:column;align-items:stretch}
   .hero .btns .btn{justify-content:space-between}
