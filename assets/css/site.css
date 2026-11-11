@@ -508,7 +508,7 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   .story.last .selmap{transform:translate(-50%,0)}
   .words .row{grid-template-columns:1fr}
   .words .row .ph,.words .row .word,.words .row .cap{grid-column:1!important}
-  .words .row .word{justify-self:start!important;margin-top:24px;grid-row:2;font-size:clamp(44px,14vw,90px);white-space:normal}
+  .words .row .word{justify-self:start!important;margin-top:24px;grid-row:2;font-size:clamp(40px,11vw,90px);white-space:nowrap}
   .words .row .cap{grid-row:3}
 }
 @media (max-width:560px){
@@ -523,8 +523,9 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   .hero .tags{display:none}
   .hero .btns{flex-direction:column;align-items:stretch}
   .hero .btns .btn{justify-content:space-between}
-  .engine-node{padding:8px 12px;border-radius:9px} .engine-node b{font-size:14px} .engine-node small{font-size:8px;letter-spacing:.08em}
-  .engine-core b{font-size:14px;margin-bottom:2px} .engine-core span{font-size:8px;letter-spacing:.08em}
+  /* phones: the ring keeps only the step names, so nothing crowds the centre */
+  .engine-node{padding:8px 16px;border-radius:10px} .engine-node b{font-size:15px} .engine-node small,.engine-core span{display:none}
+  .engine-core b{font-size:15px}
   .allo{aspect-ratio:.62} .allo button{top:12px;bottom:auto;right:12px}
   .grid3,.grid4,.stats,.people,.foot{grid-template-columns:1fr}
   .stats > div{border-left:0;border-top:1px solid var(--line)}

@@ -1,17 +1,17 @@
-// Selectivity map: binding of each design round across the target and five off-targets. Round by round the
+// Selectivity map: binding of each design round across the target and three off-targets. Round by round the
 // off-target cells cool down while the target stays lit; the steps Design → Build → Test → Learn run per row.
 import {animate, clamp, ease, REDUCED} from './gl.js';
 
-const COLS = ['Target', 'OT-1', 'OT-2', 'OT-3', 'OT-4', 'OT-5'];
+const COLS = ['Target', 'OT-1', 'OT-2', 'OT-3'];
 // illustrative binding strengths (0–1), one row per design round; the card says so under the map
 const DATA = [
-  [.72, .55, .62, .30, .48, .20],
-  [.88, .40, .35, .22, .30, .15],
-  [.90, .22, .18, .12, .16, .10],
-  [.93, .08, .06, .05, .07, .04],
+  [.72, .55, .62, .30],
+  [.88, .40, .35, .22],
+  [.90, .22, .18, .12],
+  [.93, .08, .06, .05],
 ];
 const ROW_T = 3.2, HOLD = 3, LOOP = DATA.length * ROW_T + HOLD;
-const MONO = "500 10px 'JetBrains Mono', monospace", SANS = "600 13px 'Raleway', sans-serif";
+const MONO = "500 11px 'JetBrains Mono', monospace", SANS = "600 13px 'Raleway', sans-serif";
 const PEACH = '#e9783f';
 // light card: lavender → navy scale on white. Dark card (inside the navy home story): weak binding sinks into the
 // navy, strong binding glows pale lavender.
@@ -33,6 +33,8 @@ export function initSelmap(root){
   const resize = () => { const dpr = Math.min(devicePixelRatio || 1, 2); W = cv.clientWidth; H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
   new ResizeObserver(resize).observe(cv); resize();
   // rounded rectangle path (drawn by hand so older browsers without roundRect work too)
+  // text that shrinks (down to 8 px) to fit the width it has
+  const fit = (str, x, y, maxW, px = 11) => { let f = px; do { ctx.font = `500 ${f}px 'JetBrains Mono', monospace`; } while (ctx.measureText(str).width > maxW && --f > 8); ctx.fillText(str, x, y); ctx.font = MONO; };
   const rr = (x, y, w, h, r) => { w = Math.max(0, w); h = Math.max(0, h); r = Math.max(0, Math.min(r, w / 2, h / 2)); ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); };
 
   animate(root, (dt, time) => {
@@ -44,12 +46,12 @@ export function initSelmap(root){
     ctx.globalAlpha = 1;
     const pad = W < 420 ? 16 : 32, labW = W < 420 ? 56 : 72, barW = W < 420 ? 64 : 104;
     const gx = pad + labW, gw = W - gx - barW - pad, cw = gw / COLS.length, gap = 4;
-    const ch = Math.min(cw * .95, (H - 150) / DATA.length - gap);
-    const top = Math.max(56, (H - 64 - DATA.length * (ch + gap)) / 2 + 12);   // grid centred above the step row
+    const tight = W < 520, ch = Math.min(cw * .95, (H - (tight ? 108 : 150)) / DATA.length - gap);
+    const top = Math.max(tight ? 40 : 56, (H - (tight ? 72 : 64) - DATA.length * (ch + gap)) / 2 + 12);   // grid centred above the status lines
 
     // headers
     ctx.font = MONO; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-    COLS.forEach((c, j) => { ctx.fillStyle = j ? DIM : PEACH; ctx.fillText(W < 420 && j ? c.replace('OT-', '') : c.toUpperCase(), gx + cw * (j + .5), top - 16); });
+    COLS.forEach((c, j) => { ctx.fillStyle = j ? DIM : PEACH; fit(c.toUpperCase(), gx + cw * (j + .5), top - 16, cw - 4); });
     ctx.textAlign = 'left'; ctx.fillStyle = DIM; ctx.fillText(W < 420 ? 'SEL.' : 'SELECTIVITY', gx + gw + 16, top - 16);
     ctx.fillStyle = DIM; ctx.fillText('ROUND', pad, top - 16);
 
@@ -95,16 +97,18 @@ export function initSelmap(root){
     if (done){
       const k = ease(clamp((t - DATA.length * ROW_T) / .6)) * fade, y = top + (DATA.length - 1) * (ch + gap);
       ctx.globalAlpha = k; ctx.strokeStyle = PEACH; ctx.lineWidth = 2; rr(gx - 6, y - 6, gw - gap + 12, ch + 12, 12); ctx.stroke();
-      ctx.font = SANS; ctx.fillStyle = PEACH; ctx.textAlign = 'right'; ctx.fillText('Selective hit', gx + gw - gap, y + ch + 24); ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+      // wide cards label the hit under its row; narrow ones say it in the status line instead
+      if (!tight){ ctx.font = SANS; ctx.fillStyle = PEACH; ctx.textAlign = 'right'; ctx.fillText('Selective hit', gx + gw - gap, y + ch + 24); ctx.textAlign = 'left'; }
+      ctx.globalAlpha = 1;
     }
 
     // what is happening now (the four cards below the map name the steps)
     const local = t - cur * ROW_T, step = done ? -1 : local < .6 ? 0 : local < 1.2 ? 1 : local < 2.2 ? 2 : 3;
-    const sy = H - 32;
+    const sy = H - (W < 520 ? 44 : 32);
     ctx.globalAlpha = fade; ctx.font = MONO; ctx.textAlign = 'left'; ctx.fillStyle = INK;
-    ctx.fillText(done ? 'Off-target binding designed out' : `Round ${cur + 1} · ${['designing for the target site', 'building the candidate', 'binding measured on 6 proteins', 'off-target hits feed the next design'][step]}`, pad, sy);
-    // narrow cards: the label moves to the top corner so the status line has the full width
-    ctx.globalAlpha = 1; ctx.fillStyle = DIM; ctx.textAlign = 'right'; ctx.fillText('Illustrative values', W - pad, W < 520 ? 32 : sy);
+    fit(done ? (tight ? 'Selective hit · off-target binding designed out' : 'Off-target binding designed out') : `Round ${cur + 1} · ${['designing for the target site', 'building the candidate', 'binding measured on 4 proteins', 'off-target hits feed the next design'][step]}`, pad, sy, W - pad * 2);
+    // narrow cards: the label takes its own line under the status, so neither crowds the headers
+    ctx.globalAlpha = 1; ctx.fillStyle = DIM; ctx.textAlign = W < 520 ? 'left' : 'right'; ctx.fillText('Illustrative values', W < 520 ? pad : W - pad, W < 520 ? sy + 18 : sy);
     ctx.textAlign = 'left'; ctx.globalAlpha = 1;
   });
 }

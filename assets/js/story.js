@@ -60,7 +60,8 @@ export function initStory(canvas){
     if (narrow){
       const top = 88, bot = on.offsetTop - 24;   // offsetTop ignores the panel's slide-in transform
       tbh = Math.max(140, bot - top); tcy = (top + bot) / 2;
-      if (map){ const mw = Math.min(W - 2 * gut(), tbh * 1.25), mh = Math.min(tbh, mw * .92); Object.assign(map.style, {top: `${top + (tbh - mh) / 2}px`, height: `${mh}px`, width: `${mw}px`}); }
+      // the map takes the full width, so short phones still get readable columns
+      if (map){ const mw = W - 2 * gut(), mh = Math.min(tbh, mw * .92); Object.assign(map.style, {top: `${top + (tbh - mh) / 2}px`, height: `${mh}px`, width: `${mw}px`}); }
     } else if (map) Object.assign(map.style, {top: '', height: '', width: ''});
     cy = cy ? cy + (tcy - cy) * k : tcy; bh = bh ? bh + (tbh - bh) * k : tbh;
     ctx.clearRect(0, 0, W, H);
