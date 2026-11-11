@@ -11,6 +11,9 @@
   /* spacing steps on the 8px grid: desktop here, tablet (≤1000px) and phone (≤560px) below */
   --s-sec:160px; --s-split:96px; --s-cta:208px; --s-row:144px; --s-prog:72px; --s-tail:80px; --s-slide:64px;
   --page:var(--white);
+  /* the brand gradient (the coloured words in the mission statement) and the one border every box shares */
+  --grad:linear-gradient(100deg,#9fb8ff,#c7a8ff 45%,#F2A37C 90%);
+  --edge:linear-gradient(135deg,rgba(79,143,217,.5),rgba(154,143,214,.42) 50%,rgba(242,163,124,.45));
 }
 html[data-tone=mist]{--page:var(--mist)}
 html[data-tone=navy]{--page:var(--navy)}
@@ -79,6 +82,8 @@ b.hi{color:var(--ink);font-weight:600}
 [data-theme=navy] .btn.solid::before{background:#c9d2ff}
 [data-theme=navy] .btn.solid:hover{color:var(--navy);border-color:#c9d2ff}
 [data-theme=navy] .btn:not(.solid):hover{color:var(--navy)}
+.hero .btn.solid{background:var(--grad);border-color:transparent;color:var(--navy);box-shadow:0 12px 40px -14px rgba(199,168,255,.7)}
+.hero .btn.solid::before{background:#fff}
 [data-theme=navy] .btn:not(.solid) svg{background:rgba(255,255,255,.1)}
 .btn:focus-visible,a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 
@@ -98,9 +103,8 @@ footer .logo .d{display:none} footer .logo .w{display:block}
 .nav ul{display:flex;gap:4px;list-style:none}
 .nav ul a{display:block;font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--nsoft);padding:12px 16px;border-radius:999px;transition:color .3s,background .3s}
 .nav ul a:hover,.nav ul a.on{color:inherit;background:var(--nhover)}
-.nav ul a.cta{margin-left:12px;background:var(--brand);color:#fff;padding:12px 24px}
-.nav ul a.cta:hover{background:var(--accent)}
-html[data-tone=navy] .nav ul a.cta{background:#fff;color:var(--navy)}
+.nav ul a.cta{margin-left:12px;padding:11px 24px;color:inherit;border:1px solid var(--nline)}
+.nav ul a.cta:hover{background:var(--nhover);border-color:currentColor}
 .burger{display:none;background:none;border:0;width:44px;height:44px;cursor:pointer;position:relative;color:inherit}
 .burger span{position:absolute;left:11px;right:11px;height:1.5px;background:currentColor;transition:transform .4s,top .4s}
 .burger span:first-child{top:17px} .burger span:last-child{top:26px}
@@ -147,7 +151,7 @@ section{position:relative}
 /* the two lines drift gently in opposite directions */
 .statement .huge span{display:block;will-change:transform;transform:translate3d(var(--x,0),0,0)}
 .statement .huge span + span{transform:translate3d(calc(var(--x,0px) * -1 + 8vw),0,0)}
-.statement .huge em{font-style:normal;background:linear-gradient(100deg,#9fb8ff,#c7a8ff 45%,#F2A37C 90%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.statement .huge em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 .statement .row{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:64px;opacity:var(--o,0);transform:translateY(calc((1 - var(--o,0)) * 30px))}
 .statement .row .label{grid-column:2}
 .statement .row p{grid-column:2;font-size:clamp(17px,1.4vw,20px);max-width:46ch;margin-top:-10px}
@@ -163,11 +167,11 @@ section{position:relative}
 .story .panel.r{right:max(var(--gut),calc(50vw - 620px + var(--gut)))}
 .story .panel h3{font-size:clamp(26px,2.6vw,38px);font-weight:500;letter-spacing:-.025em;margin:16px 0 16px;line-height:1.12}
 .story .panel hr{border:0;height:1px;background:var(--line2);margin:16px 0 16px}
-/* fourth panel: the selectivity map takes the protein's place, as a dark glass card in the same light */
+/* fourth panel: the selectivity map takes the protein's place, as a white card */
 .story .selmap{position:absolute;top:50%;left:max(var(--gut),calc(50vw - 620px + var(--gut)));width:min(600px,46vw);max-width:none;margin:0;
-  background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.1);box-shadow:0 40px 120px -40px rgba(70,86,200,.55);
+  background:rgba(255,255,255,.86);border:1px solid transparent;box-shadow:0 40px 100px -50px rgba(20,26,75,.45);
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);opacity:0;transform:translateY(-44%);transition:opacity .8s,transform .8s cubic-bezier(.2,.7,.2,1);pointer-events:none}
-.story .selmap::before{content:"";position:absolute;inset:-30%;z-index:-1;background:radial-gradient(closest-side,rgba(120,110,230,.28),transparent);pointer-events:none}
+.story .selmap::before{content:"";position:absolute;inset:-30%;z-index:-1;background:radial-gradient(closest-side,rgba(154,143,214,.22),transparent);pointer-events:none}
 .story.last .selmap{opacity:1;transform:translateY(-50%)}
 .story .count{position:absolute;left:50%;bottom:32px;transform:translateX(-50%);display:flex;gap:12px}
 .story .count i{width:34px;height:2px;border-radius:2px;background:var(--line2);transition:background .5s}
@@ -232,6 +236,11 @@ section{position:relative}
 .pubs .y{font-family:var(--mono);font-size:12px;color:var(--dim);text-align:right}
 .pubs svg{width:14px;height:14px;color:var(--dim);align-self:center}
 
+/* boxes: cards, visual frames and the selectivity map share one thin border in the brand gradient */
+.card,.frame,.story .selmap,.boxed{border-color:transparent!important}
+.card::after,.frame::after,.story .selmap::after,.boxed::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:var(--edge);pointer-events:none;z-index:4;
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+.boxed{position:relative;border-radius:22px;border:1px solid transparent;width:100%;max-width:580px;margin:0 auto}
 /* cards (soft lavender, rounded) */
 .card{position:relative;padding:32px;border-radius:24px;background:var(--card);border:1px solid var(--card-line);overflow:hidden;transition:transform .6s cubic-bezier(.2,.7,.2,1),box-shadow .6s,background .6s}
 .card::before{content:"";position:absolute;inset:0;background:radial-gradient(420px circle at var(--mx,50%) var(--my,0%),rgba(154,143,214,.18),transparent 55%);opacity:0;transition:opacity .5s;pointer-events:none}
@@ -259,12 +268,16 @@ section{position:relative}
 .engine{aspect-ratio:1/1;width:100%;max-width:600px;margin:0 auto}
 .engine-core{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;z-index:2;pointer-events:none}
 .engine-core b{display:block;font-size:18px;font-weight:600;letter-spacing:-.01em;margin-bottom:4px}
-.engine-core span{display:block;font-family:var(--mono);font-size:8px;line-height:1.6;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
-.engine-node{position:absolute;left:0;top:0;z-index:3;padding:12px 16px;border-radius:12px;text-align:center;background:rgba(10,14,30,.7);border:1px solid var(--line);
-  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:border-color .5s,box-shadow .5s,background .5s;white-space:nowrap}
-.engine-node small{display:block;font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
-.engine-node b{font-size:16px;font-weight:600}
-.engine-node.on{border-color:var(--c);box-shadow:0 0 28px -4px var(--c);background:rgba(14,20,42,.85)}
+/* the engine is a light card: dark type on white, the ring and comet in the step colours */
+.frame.engine{background:radial-gradient(110% 90% at 50% 45%,#ffffff 0%,#f1f2fa 70%,#e9ebf7 100%);box-shadow:0 50px 90px -50px rgba(20,26,75,.35);
+  --ink:#141a4b; --soft:#4a516b; --dim:#6e7493; --line:rgba(27,37,89,.12); --line2:rgba(27,37,89,.22); color:var(--ink)}
+.engine-core span{display:block;font-family:var(--mono);font-size:10px;line-height:1.6;letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
+.engine-node{position:absolute;left:0;top:0;z-index:3;padding:12px 16px;border-radius:12px;text-align:center;background:rgba(255,255,255,.94);border:1px solid var(--line);
+  box-shadow:0 12px 30px -18px rgba(20,26,75,.35);transition:border-color .5s,box-shadow .5s,background .5s,transform .5s;white-space:nowrap}
+.engine-node small{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);transition:color .5s}
+.engine-node b{font-size:17px;font-weight:600;color:var(--ink)}
+.engine-node.on{border-color:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 18%,transparent),0 16px 36px -14px var(--c)}
+.engine-node.on small{color:var(--c)}
 
 /* selectivity map (light card) */
 .selmap{position:relative;width:100%;max-width:640px;margin:0 auto;aspect-ratio:1.3/1;border-radius:24px;background:#fff;border:1px solid var(--card-line);box-shadow:0 40px 80px -50px rgba(20,26,75,.45)}
@@ -273,11 +286,9 @@ section{position:relative}
 
 /* dynamics */
 .dyn{aspect-ratio:1.05/1}
-.dyn [data-l]{position:absolute;left:0;top:0;z-index:2;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--soft);white-space:nowrap;transition:opacity .3s}
-.dyn [data-l=ts]{color:var(--gold)}
-/* the protein film sits on its own transparent layer above the landscape (white keyed out in WebGL) */
-.dyn .dyn-vid{position:absolute;left:50%;top:6%;height:58%;width:auto;aspect-ratio:560/846;transform:translateX(-50%);z-index:1;pointer-events:none}
-.speed{display:inline-flex;align-items:baseline;gap:8px;padding:4px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--card);color:var(--ink)}
+/* the protein film on its own transparent layer (white keyed out in WebGL), centred in the card */
+.dyn .dyn-vid{position:absolute;left:50%;top:7%;height:86%;width:auto;aspect-ratio:560/846;transform:translateX(-50%);z-index:1;pointer-events:none}
+.speed{font-weight:700;color:var(--ink)}
 
 /* allosteric */
 .allo{aspect-ratio:1.05/1}
@@ -286,7 +297,7 @@ section{position:relative}
 .allo button:hover{color:var(--ink);border-color:var(--ink)}
 
 /* closed loop iframe */
-.cl-frame{width:100%;max-width:580px;margin:0 auto;aspect-ratio:580/620;border:0;border-radius:22px;display:block;background:#0c1335;border:1px solid rgba(255,255,255,.1);box-shadow:0 50px 90px -50px rgba(0,0,0,.7)}
+.cl-frame{width:100%;max-width:580px;margin:0 auto;aspect-ratio:580/620;border:0;border-radius:22px;display:block;background:#0c1335;box-shadow:0 50px 90px -50px rgba(0,0,0,.7)}
 
 /* video */
 .video-card{position:relative;border-radius:24px;overflow:hidden;aspect-ratio:16/10;cursor:pointer;background:#000;box-shadow:0 50px 90px -50px rgba(20,26,75,.6)}
@@ -331,7 +342,8 @@ section{position:relative}
 .cta-band{position:relative;overflow:hidden;text-align:center;padding:var(--s-cta) 0}
 .cta-band canvas{position:absolute;inset:0;width:100%;height:100%}
 .cta-band .wrap{position:relative;z-index:2}
-.cta-band h2{max-width:20ch;margin:0 auto;font-weight:500}
+.cta-band h2{max-width:min(54ch,100%);margin:0 auto;font-weight:500;text-wrap:balance}
+.cta-band .lead{margin:16px auto 0;max-width:60ch}
 .cta-band .btns{justify-content:center}
 
 /* programs */
@@ -363,7 +375,7 @@ section{position:relative}
 .track i::after{content:"";position:absolute;right:-6px;top:-4px;width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid #F2A37C}
 .in .track i{width:var(--w)}
 .program > *{min-width:0}
-.stages{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;font-size:12.5px;color:var(--dim);line-height:1.35}
+.stages{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:12.5px;color:var(--dim);line-height:1.35}
 .stages span.cur{color:var(--ink);font-weight:600}
 .stages small{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;color:var(--site)}
 .status{display:flex;align-items:center;gap:12px;margin-top:16px;font-size:14px;color:var(--ink)}
@@ -485,7 +497,7 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   .slide .txt h3{font-size:24px}
   .slide .txt p{font-size:14.5px}
   .dots{right:24px;bottom:24px}
-  .stages{grid-template-columns:repeat(5,minmax(90px,1fr));overflow-x:auto}
+  .stages{grid-template-columns:repeat(4,minmax(90px,1fr));overflow-x:auto}
   form .fields{grid-template-columns:1fr}
   .hero::before{background:linear-gradient(180deg,rgba(255,255,255,0) 20%,rgba(255,255,255,.8) 55%,rgba(255,255,255,.92) 75%)}
   .statement .row{grid-template-columns:1fr} .statement .row > *{grid-column:1!important}
@@ -503,7 +515,7 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   .frame .corner.tl + .corner.tr{top:40px;right:auto;left:24px}   /* two top labels stack instead of colliding */
   .scroll-cue{display:none}
   :root{--gut:24px;--s-sec:88px;--s-split:40px;--s-cta:120px;--s-row:64px;--s-prog:32px;--s-tail:40px;--s-slide:24px}
-  .stages{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;font-size:10.5px;hyphens:auto}
+  .stages{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;font-size:10.5px;hyphens:auto}
   body{font-size:16px}
   .logo{font-size:24px;gap:8px;margin-left:-4px} .logo img{height:42px}
   .hero:not(.short){align-items:flex-end;padding-bottom:64px}
@@ -511,8 +523,8 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   .hero .tags{display:none}
   .hero .btns{flex-direction:column;align-items:stretch}
   .hero .btns .btn{justify-content:space-between}
-  .engine-node{padding:8px 12px;border-radius:9px} .engine-node b{font-size:13px} .engine-node small{font-size:7px;letter-spacing:.1em}
-  .engine-core b{font-size:13px;margin-bottom:2px} .engine-core span{font-size:6.5px;letter-spacing:.08em}
+  .engine-node{padding:8px 12px;border-radius:9px} .engine-node b{font-size:14px} .engine-node small{font-size:8px;letter-spacing:.08em}
+  .engine-core b{font-size:14px;margin-bottom:2px} .engine-core span{font-size:8px;letter-spacing:.08em}
   .allo{aspect-ratio:.62} .allo button{top:12px;bottom:auto;right:12px}
   .grid3,.grid4,.stats,.people,.foot{grid-template-columns:1fr}
   .stats > div{border-left:0;border-top:1px solid var(--line)}

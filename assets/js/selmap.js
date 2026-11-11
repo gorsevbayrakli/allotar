@@ -27,7 +27,7 @@ const ratio = r => r[0] / Math.max(...r.slice(1));
 export function initSelmap(root){
   const cv = root.querySelector('canvas'), ctx = cv.getContext('2d');
   // in the home story the map is the fourth panel: it is dark, and its rounds start when that panel opens
-  const story = root.closest('[data-story]'), C = story ? DARK : LIGHT, INK = C.ink, DIM = C.dim;
+  const story = root.closest('[data-story]'), C = story?.dataset.theme === 'navy' ? DARK : LIGHT, INK = C.ink, DIM = C.dim;
   let clock = 0;
   let W = 1, H = 1;
   const resize = () => { const dpr = Math.min(devicePixelRatio || 1, 2); W = cv.clientWidth; H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };

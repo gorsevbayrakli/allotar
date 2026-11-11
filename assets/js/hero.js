@@ -161,7 +161,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
       let cx, cy, bh;
       if (phone){ const top = 88, bot = h1.getBoundingClientRect().top - canvas.getBoundingClientRect().top - 16; bh = Math.max(120, bot - top); cy = (top + bot) / 2; cx = W / 2; }
       else if (narrow2){ bh = H * .44; cx = W / 2; cy = 88 + bh / 2; }
-      else { bh = Math.min(H * .42, W * .3); cx = W * .73; cy = H * .46; }
+      else { bh = Math.min(H * .42, W * .3); cx = W * .76; cy = H * .5; }
       const intro = ease(prog(t, .2, 1.6)), sc = (.94 + .06 * intro) * bh * (1 + .012 * Math.sin(t * .4)), bw = sc * seq.ratio;
       // slow float; sub-pixel positions keep the glide smooth
       const x0 = cx - bw / 2 + mx * 14, y0 = cy - sc / 2 - p * H * .22 + my * 8 + 6 * Math.sin(t * .55);
@@ -176,7 +176,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
       } else if (seq.ok(seq.first)){ ctx.globalAlpha = a; ctx.drawImage(seq.first, x0, y0, bw, sc); }
       ctx.globalAlpha = 1;
       camera.position.set(mx * .8, 2.2 + p * .8 - my * .4, (narrow ? 18 : 12.5) - p * 2.5);
-      camera.lookAt(narrow ? 0 : -.6, -1.4 - p * .4, -3);
+      camera.lookAt(narrow ? 0 : -2.7, (narrow ? -1.4 : -.6) - p * .4, -3);   // desktop: the sampled lights sit lower and further right, clear of the copy
     } else {
       camera.position.set(mx * .8 - 1, 3 - my * .3, 8.6 - p * 2.5);
       camera.lookAt(-1, -2.6, -8 - p * 2);   // wells sit right of the headline

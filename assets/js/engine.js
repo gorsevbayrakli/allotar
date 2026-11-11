@@ -1,33 +1,30 @@
-// AllotarX closed-loop engine: a still, tilted ring with four stations; one soft highlight moves Design → Build → Test → Learn.
-import {THREE, createStage, makePoints, animate, hdr, toScreen} from './gl.js';
+// AllotarX closed-loop engine, drawn light on a light card: a tilted ring with four stations. A comet in the colour of
+// the step it leaves runs clockwise Design → Build → Test → Learn; each station lights up as the comet reaches it, and
+// the ring itself is tinted step by step, so the loop reads as one continuous colour cycle.
+import {THREE, createStage, makePoints, animate, clamp, ease, rgb, toScreen} from './gl.js';
 
-const NODE_COL = ['#4F8FD9', '#8a6fe0', '#6a7cff', '#e0753f'];
-const NODE_ANG = [Math.PI / 2, 0, -Math.PI / 2, Math.PI];   // top, right, bottom, left (clockwise order)
-const R = 2.2, PERIOD = 3.6;
+const NODE_COL = ['#4F8FD9', '#8a6fe0', '#5466c8', '#e0753f'];
+const NODE_ANG = [Math.PI / 2, 0, -Math.PI / 2, Math.PI];   // top, right, bottom, left (clockwise on screen)
+const R = 2.2, PERIOD = 3.2, RING = 720;
 
 export function initEngine(root){
   const canvas = root.querySelector('canvas'), nodes = [...root.querySelectorAll('.engine-node')];
-  const S = createStage(canvas, {bloom: [.7, .6, .7], exposure: 1, fog: 0, env: false, fov: 30, minDpr: 2});   // supersampled: smooth core edge on 1× screens
+  const S = createStage(canvas, {light: true, fog: 0, env: false, fov: 30, minDpr: 2});
   const {scene, camera} = S;
   const rig = new THREE.Group(); scene.add(rig);
 
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(R, .012, 8, 220), new THREE.MeshBasicMaterial({color: '#28356e'})); rig.add(ring);
-  // fresnel core
-  const core = new THREE.Mesh(new THREE.SphereGeometry(.92, 64, 48), new THREE.ShaderMaterial({
-    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
-    uniforms: {uT: {value: 0}},
-    vertexShader: `varying vec3 vN; varying vec3 vV; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`,
-    fragmentShader: `uniform float uT; varying vec3 vN; varying vec3 vV; void main(){ float f = pow(1. - max(dot(vN, vV), 0.), 2.4);
-      vec3 c = mix(vec3(.05, .08, .2), vec3(.45, .65, 1.6), f) * (.9 + .1 * sin(uT * 2.)); gl_FragColor = vec4(c, 1.); }`
-  }));
-  rig.add(core);
   const markers = NODE_COL.map((c, i) => {
-    const m = new THREE.Mesh(new THREE.SphereGeometry(.09, 24, 16), new THREE.MeshBasicMaterial({color: new THREE.Color(c).multiplyScalar(2)}));
+    const m = new THREE.Mesh(new THREE.SphereGeometry(.085, 24, 16), new THREE.MeshBasicMaterial({color: c}));
     m.position.set(Math.cos(NODE_ANG[i]) * R, Math.sin(NODE_ANG[i]) * R, 0); rig.add(m); return m;
   });
-  const pts = makePoints(240, S.glow); rig.add(pts.points);
-  const C_RING = hdr('#6f8dff', 1.2), C_HEAD = NODE_COL.map(c => hdr(c, 2.4));
-  const level = [0, 0, 0, 0];   // how lit each station is, eased towards the active one
+  const pts = makePoints(RING + 80, S.glow); rig.add(pts.points);
+  const COL = NODE_COL.map(rgb), BASE = rgb('#cdd2ee'), lerp = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+  // ring colour at angle a: the colour of the step whose quarter it lies in, blended across each station
+  const tint = a => {
+    const u = ((NODE_ANG[0] - a) / (Math.PI / 2) % 4 + 4) % 4, i = Math.floor(u), f = u - i;
+    return lerp(COL[i], COL[(i + 1) % 4], ease(clamp((f - .7) / .3)));
+  };
+  const level = [0, 0, 0, 0];
   let lastActive = -1, hover = -1, hold = 0, cycle0 = 0;
   // the step cards under the ring follow the same highlight; hovering (or tapping) a node or card takes over the loop
   const cards = [...document.querySelectorAll('.steps-linked .step')];
@@ -41,19 +38,25 @@ export function initEngine(root){
 
   animate(root, (dt, t) => {
     rig.rotation.set(-.42, 0, 0);
-    camera.position.set(0, 0, S.w < 480 ? 14.5 : 11.2); camera.lookAt(0, 0, 0);
-
+    camera.position.set(0, 0, S.w < 480 ? 16 : 13); camera.lookAt(0, 0, 0);
     if (hold > 0 && (hold -= dt) <= 0) release();
-    // after a hover the loop resumes from the step that was picked
-    if (hover >= 0) cycle0 = t - hover * PERIOD;
-    const active = hover >= 0 ? hover : Math.floor((t - cycle0) / PERIOD) % 4;
-    for (let n = 0; n < 4; n++) level[n] += ((n === active ? 1 : 0) - level[n]) * Math.min(1, dt * 2.5);
+    if (hover >= 0) cycle0 = t - hover * PERIOD - PERIOD * .5;
+    // each period: rest on station i for the first half, then travel clockwise to the next station
+    const ph = (t - cycle0) / PERIOD, i = ((Math.floor(ph) % 4) + 4) % 4, f = hover >= 0 ? 0 : ease(clamp(((ph % 1) - .5) / .5));
+    const head = NODE_ANG[i] - f * Math.PI / 2, active = hover >= 0 ? hover : f > .98 ? (i + 1) % 4 : i;
+    for (let n = 0; n < 4; n++) level[n] += ((n === active ? 1 : 0) - level[n]) * Math.min(1, dt * 4);
+
     pts.n = 0;
-    for (let k = 0; k < 220; k++){ const a = k / 220 * 6.283; pts.push(Math.cos(a) * R, Math.sin(a) * R, 0, C_RING, .22, .05); }
-    // one soft halo per station, only the active one visible
-    for (let n = 0; n < 4; n++) if (level[n] > .01) pts.push(Math.cos(NODE_ANG[n]) * R, Math.sin(NODE_ANG[n]) * R, 0, C_HEAD[n], .55 * level[n], .7);
+    // the ring: a soft base line, tinted in each step's colour
+    for (let k = 0; k < RING; k++){ const a = k / RING * 6.283; const c = tint(a); pts.push(Math.cos(a) * R, Math.sin(a) * R, 0, lerp(BASE, c, .7), .95, .06); }
+    // the comet and its trail, in the colour of the step it leaves
+    const moving = f > 0 && f < 1;
+    for (let k = 0; k < 60; k++){
+      const a = head + k * .02, al = (1 - k / 60) * (moving ? 1 : .4);
+      pts.push(Math.cos(a) * R, Math.sin(a) * R, 0, COL[i], al, .13 - k * .0015);
+    }
     pts.flush();
-    markers.forEach((m, n) => m.scale.setScalar(1 + .45 * level[n]));
+    markers.forEach((m, n) => m.scale.setScalar(1 + .7 * level[n]));
 
     rig.updateMatrixWorld();
     nodes.forEach((el, n) => {
