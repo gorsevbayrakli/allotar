@@ -179,7 +179,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
       camera.lookAt(narrow ? 0 : -2.7, (narrow ? -1.4 : -.6) - p * .4, -3);   // desktop: the sampled lights sit lower and further right, clear of the copy
     } else {
       camera.position.set(mx * .8 - 1, 3 - my * .3, 8.6 - p * 2.5);
-      camera.lookAt(-1, -2.6, -8 - p * 2);   // wells sit right of the headline
+      camera.lookAt(narrow ? -1 : -5.8, -2.6, -8 - p * 2);   // wells (and their lights) sit right of the headline and copy
     }
     S.render();
   });
