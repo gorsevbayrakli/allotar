@@ -539,8 +539,11 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
 /* lists end without a closing rule under the last row */
 .pubs li:last-child a,.news article:last-child,.program:last-child{border-bottom:0}
 .words .row:last-child{margin-bottom:0}
-.sec.words{padding-bottom:var(--s-tail)}   /* the collage ends on a caption; a full section pad below it read as a gap */
+.sec.words{padding-top:var(--s-tail);padding-bottom:var(--s-tail)}   /* light ↔ navy changes: one section pad plus a short one, so the colour change never reads as an empty band */
+.cta-band{padding-top:var(--s-sec)}   /* same rule into the closing band: the page's last pad plus the band's own */
 .split:has(.selmap){align-items:start}   /* heading starts level with the top of the selectivity map */
+/* tablets and phones: every hero's copy sits at the bottom of the screen, the grid and lights above it, so no empty band is left under the text */
+@media (max-width:860px){ .hero{align-items:flex-end;padding-bottom:72px} .scroll-cue{display:none} }
 @media (max-width:860px){ .hero[data-theme=navy]::before{background:linear-gradient(180deg,rgba(10,16,48,0) 20%,rgba(10,16,48,.75) 55%,rgba(10,16,48,.88) 75%)} }
 /* path-traced protein renders, played as image sequences (seq.js) */
 .hero .hero-seq{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;-webkit-mask-image:none;mask-image:none}
