@@ -1,23 +1,33 @@
 // Ultra-fast dynamics sampling ("conformational transition in action"): a rendered film of the protein moving
 // between its open, metastable and closed states, while a marker follows the same path across the free-energy
-// landscape. Open sits on the left, the shallower metastable state in the middle and the closed state, the deepest
-// minimum, on the right, so the path from open to closed passes through the metastable basin.
+// landscape. Open sits front left, closed front right (the deepest minimum), and the shallower metastable state
+// between them, further back.
 // The film plays on its own transparent layer (white keyed out) so its colours stay exact; the landscape
 // and marker are read from the film's own clock, so the two never drift apart.
 import {THREE, createStage, makePoints, animate, clamp, ease, hdr, toScreen} from './gl.js';
 
-// three basins along the path: open (left), metastable (middle, shallowest) and closed (right, deepest)
-const XO = -2.15, XA = 0, XC = 2.15;
-const g = (x, z, cx, sx, sz) => Math.exp(-((x - cx) ** 2 / sx + z * z / sz));
-const energy = (x, z) => -.9 * g(x, z, XO, .55, .8) - 1.1 * g(x, z, XC, .55, .75) - .55 * g(x, z, XA, .5, .7)
+// three basins, not in a row: open (front left) and closed (front right, the deepest minimum), with the shallower
+// metastable basin between them and further back
+const XO = -2.15, XC = 2.15, XA = 0, ZA = -.85;
+const g = (x, z, cx, cz, sx, sz) => Math.exp(-((x - cx) ** 2 / sx + (z - cz) ** 2 / sz));
+const energy = (x, z) => -.95 * g(x, z, XO, .1, .55, .7) - 1.1 * g(x, z, XC, .1, .55, .7) - .5 * g(x, z, XA, ZA, .45, .4)
   + .04 * Math.sin(x * 3.1 + z * 2.3);
-const TS1 = (XO + XA) / 2, TS2 = (XA + XC) / 2;   // barriers: open | metastable | closed
 
-// the film's timeline (seconds): open → closes → closed → shifts → metastable → back → closed → opens
-const FILM = [[0, XO], [.4, XO], [1.8, XC], [4.4, XC], [5.8, XA], [7.2, XA], [8.6, XC], [11.2, XC], [12.8, XO]];
-function pathX(t){
-  for (let i = 1; i < FILM.length; i++){ const [t1, x1] = FILM[i], [t0, x0] = FILM[i - 1]; if (t <= t1) return x0 + (x1 - x0) * ease((t - t0) / (t1 - t0 || 1)); }
-  return XO;
+// the film's timeline (seconds): open → closes → closed → shifts → metastable → back → closed → opens. Open ↔ closed
+// runs across the front over one barrier; closed ↔ metastable runs to the back basin and returns.
+const FILM = [[0, XO, .1], [.4, XO, .1], [1.8, XC, .1], [4.4, XC, .1], [5.8, XA, ZA], [7.2, XA, ZA], [8.6, XC, .1], [11.2, XC, .1], [12.8, XO, .1]];
+// position on the landscape at film time t, plus how far into a crossing it is (0 at rest, 1 on the barrier) and
+// where that segment's barrier is
+function path(t){
+  for (let i = 1; i < FILM.length; i++){
+    const [t1, x1, z1] = FILM[i], [t0, x0, z0] = FILM[i - 1];
+    if (t <= t1){
+      const u = (t - t0) / (t1 - t0 || 1), e = ease(u), moving = x0 !== x1 || z0 !== z1;
+      const bow = x0 !== x1 && z0 === z1 ? .35 * Math.sin(Math.PI * e) : 0;   // the front crossing bows towards the viewer
+      return {x: x0 + (x1 - x0) * e, z: z0 + (z1 - z0) * e + bow, cross: moving ? Math.sin(Math.PI * e) : 0, bx: (x0 + x1) / 2, bz: (z0 + z1) / 2 + (bow ? .35 : 0)};
+    }
+  }
+  return {x: XO, z: .1, cross: 0, bx: 0, bz: 0};
 }
 
 // film layer: the video drawn through a shader that turns the white background transparent
@@ -91,23 +101,22 @@ export async function initDynamics(root){
 
   animate(root, dt => {
     mx += (tmx - mx) * Math.min(1, dt * 3);
-    const vt = film.video.currentTime || 0, x = pathX(vt), z = .3 * Math.sin(Math.PI * clamp((x - XO) / (XC - XO))), y = energy(x, z) - 1.55 + .1;
+    const vt = film.video.currentTime || 0, P = path(vt), x = P.x, z = P.z, y = energy(x, z) - 1.55 + .1;
     trail.unshift([x, y, z]); if (trail.length > 60) trail.pop();
     fx.n = 0;
     fx.push(x, y, z, C_BALL, 1, .32);
     trail.forEach((p, k) => fx.push(p[0], p[1], p[2], C_TRAIL, (1 - k / trail.length) * .6, .1 - k * .001));
     fx.flush();
 
-    camera.position.set(mx * 2.2, 2.1, 9.2); camera.lookAt(0, -.25, 0);
+    camera.position.set(mx * 2.2, 3.9, 8.4); camera.lookAt(0, -.15, 0);   // from above, so the back basin reads as further away
     const place = (el, wx, wy, wz, a) => { const p = toScreen(new THREE.Vector3(wx, wy, wz), camera, S.w, S.h); el.style.transform = `translate(${p.x}px,${p.y}px) translate(-50%,-50%)`; el.style.opacity = a; };
-    const near = cx => clamp(1 - Math.abs(x - cx) / 1.2);
-    // the barrier label shows over whichever barrier the marker is crossing
-    const tsx = x < XA ? TS1 : TS2, crossing = Math.sin(Math.PI * clamp(x < XA ? (x - XO) / (XA - XO) : (x - XA) / (XC - XA))) * (Math.abs(x - XA) > .05 ? 1 : 0);
-    // state labels float just behind the rim of each basin, so they stay inside the card
-    place(lbl.open, XO, -1.35, -1.25, .45 + .55 * near(XO));
-    place(lbl.closed, XC, -1.35, -1.25, .45 + .55 * near(XC));
-    place(lbl.alt, XA, -1.35, -1.25, .45 + .55 * near(XA));
-    place(lbl.ts, tsx, -1.55 + energy(tsx, .1) + .45, .2, crossing);
+    const near = (cx, cz) => clamp(1 - Math.hypot(x - cx, z - cz) / 1.2);
+    // each state is named on the far rim of its basin
+    place(lbl.open, XO, -1.2, -.75, .45 + .55 * near(XO, .1));
+    place(lbl.closed, XC, -1.2, -.75, .45 + .55 * near(XC, .1));
+    place(lbl.alt, XA, -1.3, ZA - .62, .45 + .55 * near(XA, ZA));
+    // the barrier label shows over the barrier of whichever crossing is under way
+    place(lbl.ts, P.bx, -1.55 + energy(P.bx, P.bz) + .45, P.bz, P.cross);
     S.render();
     film.draw();
   });

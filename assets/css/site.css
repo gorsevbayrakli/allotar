@@ -179,17 +179,22 @@ section{position:relative}
 
 /* big words over a photo collage */
 .words .row{position:relative;display:grid;grid-template-columns:repeat(12,1fr);align-items:center;margin-bottom:var(--s-row)}
-.words .ph{grid-row:1;border-radius:24px;overflow:hidden;aspect-ratio:5/3;box-shadow:0 40px 80px -40px rgba(20,26,75,.45);will-change:transform}
-/* 3:2 artwork in a 5:3 frame: 12% extra height, centred, leaves room for the parallax without cropping the sides */
-.words .ph img{position:relative;top:-6%;width:100%;height:112%;object-fit:cover;will-change:transform}
+/* the three approach panels are labelled infographics: shown whole, never cropped */
+.words .ph{grid-row:1;border-radius:24px;overflow:hidden;aspect-ratio:1755/896;background:#eef2fb;box-shadow:0 40px 80px -40px rgba(0,0,0,.55);will-change:transform}
+.words .ph img{width:100%;height:100%;object-fit:contain}
 .words .word{grid-row:1;position:relative;z-index:2;font-size:clamp(40px,5.6vw,86px);font-weight:300;letter-spacing:-.05em;line-height:.95;color:var(--ink);will-change:transform;white-space:nowrap}
 .words .cap{grid-row:2;margin-top:24px;max-width:36ch}
-.words .row:nth-child(odd) .ph{grid-column:5 / span 6}
+/* desktop: the word on its own line, the infographic wide beneath it and the caption beside, sides alternating */
+.words .row{column-gap:24px}
+.words .row .word{grid-row:1;margin-bottom:24px}
+.words .row .ph,.words .row .cap{grid-row:2}
+.words .row .cap{margin-top:0;align-self:end}
 .words .row:nth-child(odd) .word{grid-column:1 / span 12;justify-self:start}
-.words .row:nth-child(odd) .cap{grid-column:5 / span 5}
-.words .row:nth-child(even) .ph{grid-column:2 / span 6}
-.words .row:nth-child(even) .word{grid-column:6 / span 7;justify-self:end}
-.words .row:nth-child(even) .cap{grid-column:2 / span 5}
+.words .row:nth-child(odd) .ph{grid-column:1 / span 9}
+.words .row:nth-child(odd) .cap{grid-column:10 / span 3}
+.words .row:nth-child(even) .word{grid-column:1 / span 12;justify-self:end}
+.words .row:nth-child(even) .ph{grid-column:4 / span 9}
+.words .row:nth-child(even) .cap{grid-column:1 / span 3;text-align:right;justify-self:end}
 
 /* legal pages: plain reading text */
 .doc{padding-top:152px}
@@ -289,7 +294,7 @@ section{position:relative}
 .dyn [data-l]{position:absolute;left:0;top:0;z-index:2;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--soft);white-space:nowrap;transition:opacity .3s}
 .dyn [data-l=ts]{color:var(--gold)}
 /* the protein film sits on its own transparent layer above the landscape (white keyed out in WebGL) */
-.dyn .dyn-vid{position:absolute;left:50%;top:9%;height:56%;width:auto;aspect-ratio:560/846;transform:translateX(-50%);z-index:1;pointer-events:none}
+.dyn .dyn-vid{position:absolute;left:50%;top:6%;height:40%;width:auto;aspect-ratio:560/846;transform:translateX(-50%);z-index:1;pointer-events:none}
 .speed{font-weight:700;color:var(--ink)}
 
 /* allosteric */
@@ -509,7 +514,8 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   .story .selmap{left:50%;aspect-ratio:auto;transform:translate(-50%,12px)}
   .story.last .selmap{transform:translate(-50%,0)}
   .words .row{grid-template-columns:1fr}
-  .words .row .ph,.words .row .word,.words .row .cap{grid-column:1!important}
+  .words .row .ph,.words .row .word,.words .row .cap{grid-column:1!important;text-align:left!important;justify-self:start!important}
+  .words .row .ph{grid-row:1!important} .words .row .word{margin-bottom:0}
   .words .row .word{justify-self:start!important;margin-top:24px;grid-row:2;font-size:clamp(40px,11vw,90px);white-space:nowrap}
   .words .row .cap{grid-row:3}
 }
