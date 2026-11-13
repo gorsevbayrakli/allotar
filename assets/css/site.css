@@ -152,10 +152,12 @@ section{position:relative}
 .statement .huge span{display:block;will-change:transform;transform:translate3d(var(--x,0),0,0)}
 .statement .huge span + span{transform:translate3d(calc(var(--x,0px) * -1 + 8vw),0,0)}
 .statement .huge em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-.statement .row{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:64px;opacity:var(--o,0);transform:translateY(calc((1 - var(--o,0)) * 30px))}
-.statement .row .label{grid-column:2}
-.statement .row p{grid-column:2;font-size:clamp(17px,1.4vw,20px);max-width:46ch;margin-top:-10px}
-.statement .row hr{grid-column:2;border:0;height:1px;background:var(--line2);margin:-12px 0 0}
+/* the mission: one centred column under the statement */
+.statement .row{display:flex;flex-direction:column;align-items:center;gap:24px;margin-top:64px;text-align:center;opacity:var(--o,0);transform:translateY(calc((1 - var(--o,0)) * 30px))}
+.statement .row .label{justify-content:center}
+.statement .row .label::before{display:none}
+.statement .row p{font-size:clamp(17px,1.4vw,20px);max-width:52ch}
+.statement .row hr{width:min(560px,100%);border:0;height:1px;background:var(--line2)}
 
 /* pinned protein story */
 .story{height:440vh}
@@ -507,8 +509,7 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   .stages{grid-template-columns:repeat(4,minmax(90px,1fr));overflow-x:auto}
   form .fields{grid-template-columns:1fr}
   .hero::before{background:linear-gradient(180deg,rgba(255,255,255,0) 20%,rgba(255,255,255,.8) 55%,rgba(255,255,255,.92) 75%)}
-  .statement .row{grid-template-columns:1fr} .statement .row > *{grid-column:1!important}
-  .statement .huge{white-space:normal} .statement .huge span + span{transform:translate3d(calc(var(--x,0px) * -1),0,0)}
+  .statement .huge{white-space:normal;text-align:center} .statement .huge span + span{transform:translate3d(calc(var(--x,0px) * -1),0,0)}
   .story .panel{width:auto;left:var(--gut)!important;right:var(--gut)!important;top:auto;bottom:88px;transform:translateY(20px)}
   .story .panel.on{transform:none}
   .story .selmap{left:50%;aspect-ratio:auto;transform:translate(-50%,12px)}
