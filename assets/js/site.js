@@ -43,7 +43,7 @@ function onScrollFx(){
   // pinned story: which panel is showing
   $$('[data-story]').forEach(st => {
     const P = $$('.panel', st), r = st.getBoundingClientRect(), p = clamp01(-r.top / Math.max(1, r.height - innerHeight)), n = Math.min(P.length - 1, Math.floor(p * P.length));
-    const inView = r.top < innerHeight * .5 && r.bottom > innerHeight * .5;
+    const inView = r.top < innerHeight * .75 && r.bottom > innerHeight * .5;   // the first panel is already up as the story comes in
     P.forEach((el, i) => el.classList.toggle('on', i === n && inView));
     st.classList.toggle('last', n === P.length - 1 && inView);   // the closing panel brings in the selectivity map
     $$('.count i', st).forEach((el, i) => el.classList.toggle('on', i === n));
