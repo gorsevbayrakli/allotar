@@ -109,7 +109,9 @@ export async function initDynamics(root){
     fx.flush();
 
     camera.position.set(mx * 2.2, 3.9, 8.4); camera.lookAt(0, -.15, 0);   // from above, so the back basin reads as further away
-    const place = (el, wx, wy, wz, a) => { const p = toScreen(new THREE.Vector3(wx, wy, wz), camera, S.w, S.h); el.style.transform = `translate(${p.x}px,${p.y}px) translate(-50%,-50%)`; el.style.opacity = a; };
+    // labels stay inside the card, however narrow it is
+    const place = (el, wx, wy, wz, a) => { const p = toScreen(new THREE.Vector3(wx, wy, wz), camera, S.w, S.h), hw = el.offsetWidth / 2 + 12;
+      el.style.transform = `translate(${clamp(p.x, hw, S.w - hw)}px,${p.y}px) translate(-50%,-50%)`; el.style.opacity = a; };
     const near = (cx, cz) => clamp(1 - Math.hypot(x - cx, z - cz) / 1.2);
     // each state is named on the far rim of its basin
     place(lbl.open, XO, -1.2, -.75, .45 + .55 * near(XO, .1));
