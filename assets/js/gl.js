@@ -54,6 +54,10 @@ export function pacmanView(){ return new THREE.Quaternion(-.4134, -.1949, -.8562
 // ---------- stage: renderer + bloom, sized to its canvas ----------
 // light: transparent canvas over a light page, no bloom, glow points drawn as soft opaque dots
 // minDpr: render at least at this pixel ratio (supersampling), for small scenes whose edges would look jagged at 1×
+// one quality setting for every scene: full-screen post-processed scenes render at most at 1.5× pixel density, and
+// if the page cannot keep up (frames take longer than ~28 ms for a couple of seconds) every scene drops a step
+const STAGES = []; let QUALITY = 1;
+function lowerQuality(){ if (QUALITY <= .6) return; QUALITY = Math.max(.6, QUALITY - .2); STAGES.forEach(s => s.resize()); }
 export function createStage(canvas, {bloom = [.55, .7, .82], exposure = .85, fog = .022, bg = '#0a1030', fov = 32, env = true, light = false, minDpr = 1} = {}){
   const renderer = new THREE.WebGLRenderer({canvas, antialias: light, alpha: light, powerPreference: 'high-performance'});
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = exposure;
@@ -75,7 +79,7 @@ export function createStage(canvas, {bloom = [.55, .7, .82], exposure = .85, fog
   const glow = glowMaterial(light);
   const stage = {renderer, scene, camera, composer, glow, light, w: 1, h: 1, onResize: null};
   const resize = () => {
-    const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1, dpr = Math.min(Math.max(devicePixelRatio || 1, minDpr), 2);
+    const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1, dpr = Math.max(1, Math.min(Math.max(devicePixelRatio || 1, minDpr), composer ? 1.5 : 2) * QUALITY);
     stage.w = w; stage.h = h;
     renderer.setPixelRatio(dpr); renderer.setSize(w, h, false); if (composer){ composer.setPixelRatio(dpr); composer.setSize(w, h); }
     camera.aspect = w / h; camera.updateProjectionMatrix();
@@ -83,7 +87,7 @@ export function createStage(canvas, {bloom = [.55, .7, .82], exposure = .85, fog
     stage.onResize && stage.onResize(w, h);
   };
   new ResizeObserver(resize).observe(canvas); resize();
-  stage.resize = resize;
+  stage.resize = resize; STAGES.push(stage);
   stage.render = () => composer ? composer.render() : renderer.render(scene, camera);
   return stage;
 }
@@ -171,6 +175,13 @@ export function fillSurface(mc, P, B, colorOf){
 }
 
 // ---------- render only while on screen ----------
+let slowFor = 0, lastTick = 0;
+function watch(now){   // shared frame-time watchdog (one per page, fed by whichever scenes are running)
+  if (now === lastTick) return; const d = now - lastTick; lastTick = now;
+  if (d > 200) return;   // tab switch or a pause, not a slow frame
+  slowFor = d > 28 ? slowFor + d : Math.max(0, slowFor - d * .5);
+  if (slowFor > 2000){ slowFor = 0; lowerQuality(); }
+}
 export function animate(el, frame){
   let visible = false, last = performance.now(), started = false;
   new IntersectionObserver(e => { visible = e[0].isIntersecting; }, {rootMargin: '120px'}).observe(el);
@@ -178,7 +189,7 @@ export function animate(el, frame){
   const loop = now => {
     requestAnimationFrame(loop);
     if (!visible || document.hidden){ last = now; return; }
-    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    const dt = Math.min(.05, (now - last) / 1000); last = now; watch(now);
     if (REDUCED && started) return;
     started = true;
     frame(dt, (now - t0) / 1000);

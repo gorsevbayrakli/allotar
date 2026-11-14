@@ -59,7 +59,7 @@ else { addEventListener('scroll', onScrollFx, {passive: true}); onScrollFx(); }
 // ---------- smooth scroll ----------
 let lenis = null;
 if (window.Lenis && !REDUCED){
-  lenis = new Lenis({duration: 1.15, smoothWheel: true});
+  lenis = new Lenis({lerp: .14, smoothWheel: true});   // light smoothing: the page follows the wheel closely instead of gliding behind it
   const raf = t => { lenis.raf(t); requestAnimationFrame(raf); }; requestAnimationFrame(raf);
 }
 $$('a[href^="#"]').forEach(a => a.addEventListener('click', e => {
@@ -197,3 +197,7 @@ const glo = new IntersectionObserver(entries => entries.forEach(e => {
 }), {rootMargin: '400px 0px'});
 $$('[data-gl]').forEach(el => glo.observe(el));
 $$('iframe[data-src]').forEach(f => new IntersectionObserver((en, o) => { if (en[0].isIntersecting){ f.src = f.dataset.src; o.disconnect(); } }, {rootMargin: '300px 0px'}).observe(f));
+
+// looping videos play only while on screen, so off-screen ones don't keep decoding during scroll
+const vio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting){ if (!REDUCED) e.target.play().catch(() => {}); } else e.target.pause(); }), {rootMargin: '200px 0px'});
+$$('video[autoplay]').forEach(v => { v.autoplay = false; v.pause(); vio.observe(v); });
