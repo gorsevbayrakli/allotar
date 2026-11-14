@@ -123,7 +123,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
     const el = document.createElement('canvas'); el.className = 'hero-seq'; el.setAttribute('aria-hidden', 'true');
     canvas.after(el); layer = canvas2d(el);
     const size = Math.min(innerWidth, innerHeight * .8) < 700 ? 's' : 'l';
-    const img = k => { const im = new Image(); im.decoding = 'async'; im.src = new URL(`../img/protein/breathe/${size}/${String(k).padStart(3, '0')}.webp`, import.meta.url).href; return im; };
+    const img = k => { const im = new Image(); im.decoding = 'async'; im.src = new URL(`../img/protein/surface/${size}/${String(k).padStart(3, '0')}.webp`, import.meta.url).href; return im; };
     const first = img(0), frames = [first];
     first.decode?.().catch(() => {}).finally(() => { for (let k = 1; k < BF; k++) frames[k] = img(k); });
     const ok = im => im && im.complete && im.naturalWidth > 0;

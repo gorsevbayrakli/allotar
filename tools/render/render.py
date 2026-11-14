@@ -48,7 +48,10 @@ def breathe(n=60):
         out.append(dict(lam=.05 + .45 * u, rotY=-.22 + .44 * u, rotX=.05 + .04 * u, glow=u * u, site=0, swell=0))
     return out
 
-JOBS = {'breathe': (breathe, dict(w=1400, h=1558, samples=384, grow=1.1, dist=10.2)),
+SURF = dict(rep='surface', cols=['#86aef2', '#b7aef6', '#ffe0ba'], siteCol='#ff9a5c', blob=24, res=200, exposure=1.2)
+JOBS = {'sprev': (lambda: [breathe()[0], breathe()[-1]], dict(w=560, h=624, samples=128, grow=1.3, dist=10.2, **SURF)),
+        'sbreathe': (breathe, dict(w=1400, h=1558, samples=384, grow=1.1, dist=10.2, **SURF)),
+        'breathe': (breathe, dict(w=1400, h=1558, samples=384, grow=1.1, dist=10.2)),
         'morph': (morph, dict(w=1400, h=1558, samples=384, grow=1.1, dist=10.2, rotY=-.3, rotX=.05, site=0, swell=0)),
         'states': (states, dict(w=1400, h=1558, samples=384, grow=1.1, dist=10.2, rotY=-.3, rotX=.05, site=0, swell=0)),
         'story': (story, dict(w=1000, h=1112, samples=128, grow=1.1, dist=10.2)),

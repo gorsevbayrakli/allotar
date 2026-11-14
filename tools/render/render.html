@@ -14,6 +14,7 @@
 <script type="module">
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import {MarchingCubes} from 'three/addons/objects/MarchingCubes.js';
 import {WebGLPathTracer, GradientEquirectTexture} from 'three-gpu-pathtracer';
 
 const d = await (await fetch('../../assets/data/protein.json')).json();
@@ -37,12 +38,13 @@ pt.tiles.set(2, 2); pt.bounces = 6; pt.renderDelay = 0; pt.fadeDuration = 0; pt.
 
 const sphere = new THREE.IcosahedronGeometry(1, 3);   // ~640 triangles per atom, smooth under path tracing
 const lin = h => new THREE.Color(h);
-let mesh = null;
+let mesh = null, _mc = null;
+const getMC = res => { if (!_mc || _mc.resolution !== res){ _mc = new MarchingCubes(res, new THREE.MeshBasicMaterial(), false, true, 1200000); _mc.isolation = 80; } return _mc; };
 
 // opts: lam 0 open → 1 closed, rotY/rotX radians on top of the view, glow 0..1 on site `site`, palette colours
 window.renderFrame = async ({w = 900, h = 1000, lam = 0, rotY = 0, rotX = 0, glow = 0, site = 0, samples = 160, dist = 11.5,
   cols = ['#6b7cf0', '#9a8fe6', '#5c9be6'], siteCol = '#f2a37c', exposure = 1.05, swell = .45, y = 0, grow = 1,
-  part = null} = {}) => {
+  part = null, rep = 'atoms', res = 168, blob = 14, rough = .5} = {}) => {
   // part [x, y, w, h]: render one piece of the w × h frame (the path tracer returns nothing above ~1024 px, so
   // render.py renders big frames in pieces and stitches them)
   const [px, py, pw, ph] = part || [0, 0, w, h];
@@ -58,10 +60,29 @@ window.renderFrame = async ({w = 900, h = 1000, lam = 0, rotY = 0, rotX = 0, glo
     g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.deleteAttribute('uv'); (lit > .02 ? litParts : parts).push(g);
   }
   if (mesh) mesh.traverse(o => o.geometry && o.geometry.dispose());
+  if (rep === 'surface'){
+    // molecular surface: one smooth skin over the atoms (marching cubes over summed atom blobs), coloured by
+    // domain, the lit site warming its patch; matte satin like the reference films
+    const SB = 78, mc = getMC(res);
+    mc.reset();
+    for (let i = 0; i < N; i++){
+      const j = i * 3, x = P0[j] + (P1[j] - P0[j]) * lam, yy = P0[j+1] + (P1[j+1] - P0[j+1]) * lam, z = P0[j+2] + (P1[j+2] - P0[j+2]) * lam;
+      const lit = siteOf[i] === site ? glow : 0;
+      mc.addBall(x / SB + .5, yy / SB + .5, z / SB + .5, .046 * RAD[i] * grow / 1.7 * (1 + .6 * swell * lit), blob, C[d.dom[i]].clone().lerp(S, lit));
+    }
+    mc.update();
+    const n = mc.count, g = new THREE.BufferGeometry(), sc = SB / 2 * K;
+    g.setAttribute('position', new THREE.BufferAttribute(mc.positionArray.slice(0, n * 3), 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(mc.normalArray.slice(0, n * 3), 3));
+    g.setAttribute('color', new THREE.BufferAttribute(mc.colorArray.slice(0, n * 3), 3));
+    g.scale(sc, sc, sc);
+    parts.length = 0; litParts.length = 0; parts.push(g);
+  }
   const geo = mergeGeometries(parts);
   // satin plastic, like a studio molecular render (sheen and clearcoat render black in this path tracer build,
   // so the gloss comes from a low roughness and a stronger specular lobe)
-  const mat = new THREE.MeshPhysicalMaterial({vertexColors: true, roughness: .34, metalness: 0, specularIntensity: 1, ior: 1.6});
+  const mat = rep === 'surface' ? new THREE.MeshPhysicalMaterial({vertexColors: true, roughness: rough, metalness: 0, specularIntensity: .6, ior: 1.45})
+    : new THREE.MeshPhysicalMaterial({vertexColors: true, roughness: .34, metalness: 0, specularIntensity: 1, ior: 1.6});
   mesh = new THREE.Group(); mesh.add(new THREE.Mesh(geo, mat));
   // the lit site emits its own warm light, so it glows out of the pocket and tints its neighbours
   if (litParts.length) mesh.add(new THREE.Mesh(mergeGeometries(litParts), new THREE.MeshPhysicalMaterial({vertexColors: true, roughness: .3,
