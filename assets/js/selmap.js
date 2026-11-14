@@ -82,13 +82,13 @@ export function initSelmap(root){
         ctx.globalAlpha = 1;
       });
       // selectivity bar
-      const s = clamp((local - 2) / .8), rat = ratio(row), bx = gx + gw + 16, bw = barW - 16 - (W < 420 ? 0 : 32);
+      const s = clamp((local - 2) / .8), rat = ratio(row), bx = gx + gw + 16, bw = barW - 16;
       ctx.globalAlpha = fade;
       ctx.fillStyle = `rgba(${C.fill},.07)`; rr(bx, y + ch / 2 - 3, bw, 6, 3); ctx.fill();
       if (s > 0){
         const g = ctx.createLinearGradient(bx, 0, bx + bw, 0); g.addColorStop(0, '#9A8FD6'); g.addColorStop(1, PEACH);
         ctx.fillStyle = g; rr(bx, y + ch / 2 - 3, bw * clamp(Math.log(rat) / Math.log(25)) * ease(s), 6, 3); ctx.fill();
-        if (W >= 420){ ctx.globalAlpha = fade * s; ctx.font = MONO; ctx.fillStyle = INK; ctx.fillText(rat.toFixed(1) + '×', bx + bw + 8, y + ch / 2 + 4); }
+        // no ratio printed: the bar alone shows selectivity growing round by round
       }
       ctx.globalAlpha = 1;
     });
