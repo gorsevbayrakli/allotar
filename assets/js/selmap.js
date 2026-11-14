@@ -74,7 +74,7 @@ export function initSelmap(root){
         if (design < 1){ ctx.strokeStyle = `rgba(${C.dash},${.35 * design})`; ctx.setLineDash([4, 4]); ctx.lineWidth = 1; rr(x + .5, y + .5, cw - gap - 1, ch - 1, 8); ctx.stroke(); ctx.setLineDash([]); }
         if (k > 0){
           ctx.globalAlpha = fade * ease(k); ctx.fillStyle = heat(v); rr(x, y, cw - gap, ch, 8); ctx.fill();
-          if (cw > 46){ ctx.globalAlpha = fade * ease(k); ctx.font = MONO; ctx.textAlign = 'center'; ctx.fillStyle = v > C.strong ? C.onStrong : C.onWeak; ctx.fillText(v.toFixed(2), x + (cw - gap) / 2, y + ch / 2 + 4); ctx.textAlign = 'left'; }
+          // no numbers in the cells: the colour alone carries the (illustrative) binding strength
         }
         // learn: off-target cells that still bind are flagged for the next design
         const learn = clamp((local - 2.2) / .4) * (1 - clamp((local - ROW_T - .4) / .6));
