@@ -4,7 +4,7 @@
 import {animate, rng, clamp, ease} from './gl.js';
 
 const C = {axis: 'rgba(160,180,255,.22)', grid: 'rgba(160,180,255,.06)', dim: '#7d88b3', ink: '#dfe6ff', blue: '#59a8ff', violet: '#a08cff', site: '#ff7a3a', teal: '#19d3a8'};
-const CYCLE = 12;
+const CYCLE = 14;
 
 export function initAllosteric(root){
   const cv = root.querySelector('canvas'), ctx = cv.getContext('2d'), btn = root.querySelector('button');
@@ -17,17 +17,17 @@ export function initAllosteric(root){
   const r = rng(11), gauss = () => { let s = 0; for (let i = 0; i < 6; i++) s += r(); return (s - 3) / 1.2; };
   const conf = Array.from({length: 320}, (_, i) => { const act = i % 5 < 2; return {x: act ? .7 + gauss() * .09 : .3 + gauss() * .1, y: act ? .68 + gauss() * .09 : .32 + gauss() * .1, p: r() * 6.28, act}; });
   const probes = Array.from({length: 130}, () => ({x: clamp(r() * .95 + .02), y: clamp(Math.pow(r(), 1.4) * .95 + .02), p: r() * 6.28, d: r()}));
-  // the profile: a low baseline, plus one peak per site that rises only while that site is being found
+  // the profile: a low baseline plus one peak per site
   const NRES = 200, b1 = [], b2 = [], SITES = [46, 118, 163], bump = SITES.map(c => Array.from({length: NRES}, (_, i) => Math.exp(-((i - c) ** 2) / 40)));
   for (let i = 0; i < NRES; i++){
     b1.push(.18 + .08 * Math.sin(i * .21) + .05 * Math.sin(i * .9));
     b2.push(.12 + .1 * Math.sin(i * .13 + 1) + .05 * Math.cos(i * .7));
   }
-  const f1 = new Array(NRES), f2 = new Array(NRES);
+  const f1 = b1.map((v, i) => clamp(v + .55 * bump.reduce((t, b) => t + b[i], 0))), f2 = b2.map((v, i) => clamp(v + .45 * bump.reduce((t, b) => t + b[i], 0)));
   // three discoveries, one per allosteric site. Each is one movement, all in step: while the trajectory travels
   // from one state to the other, that site's peak rises on the profile and its cluster of probes appears in the
   // probe panel (two clusters top right, one bottom left); they arrive together
-  const EVENTS = [.38, .58, .78], HOP = .12;
+  const RISE = 20;   // residues over which the pen climbs a peak, and so the length of each hop
   const CLUSTERS = [[.74, .8], [.2, .24], [.9, .6]].map(([cx, cy]) => Array.from({length: 8}, () => ({x: clamp(cx + gauss() * .045), y: clamp(cy + gauss() * .05), p: r() * 6.28})));
   let F = 1;   // end-of-cycle fade, applied to everything
 
@@ -43,8 +43,10 @@ export function initAllosteric(root){
     if (!paused) clock += dt;
     const t = clock, c = (t % CYCLE) / CYCLE;
     F = 1 - clamp((c - .92) / .06);
-    // how far each discovery has played out (0 before the trajectory sets off, 1 when it arrives), and the flash on arrival
-    const pop = EVENTS.map(e => ease(clamp((c - (e - HOP)) / HOP))), flash = EVENTS.map(e => { const u = (c - e) / .08; return u > 0 && u < 1 ? Math.sin(Math.PI * u) : 0; });
+    // the profile is drawn left to right; as the pen climbs each site's peak, the trajectory travels to the other
+    // state and that site's probe cluster appears, all arriving together on the peak's top
+    const head = clamp((c - .06) / .8) * (NRES - 1);
+    const pop = SITES.map(s => ease(clamp((head - (s - RISE)) / RISE))), flash = SITES.map(s => { const u = (head - s) / 14; return u > 0 && u < 1 ? Math.sin(Math.PI * u) : 0; });
     ctx.clearRect(0, 0, W, H);
     const narrow = W < 520, pad = narrow ? 24 : 32, gap = 32, top = narrow ? 56 : 32;   // room for the pause button (top right on phones, bottom right otherwise)
     const pw = narrow ? W - pad * 2 : (W - pad * 2 - gap) / 2, ph = narrow ? H * .2 : H * .36;
@@ -79,14 +81,16 @@ export function initAllosteric(root){
     // C: allosteric profile
     const cx = pad, cy = by + ph + 32, cw = W - pad * 2, ch = H - cy - (narrow ? 32 : 64);
     panel(cx, cy, cw, ch);
-    for (let i = 0; i < NRES; i++){ let p = 0; for (let k = 0; k < 3; k++) p += pop[k] * bump[k][i]; f1[i] = clamp(b1[i] + .55 * p); f2[i] = clamp(b2[i] + .45 * p); }
-    const draw = ease(clamp((c - .05) / .2)), n = Math.floor(NRES * draw);
+    const n = Math.floor(head) + 1;
     for (const [arr, col, dash] of [[f1, C.blue, []], [f2, C.violet, [5, 4]]]){
       ctx.globalAlpha = F; ctx.setLineDash(dash); ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.shadowColor = col; ctx.shadowBlur = 8; ctx.beginPath();
       for (let i = 0; i < n; i++){ const x = cx + i / (NRES - 1) * cw, y = cy + (1 - arr[i]) * ch; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
       ctx.stroke(); ctx.shadowBlur = 0; ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
-    SITES.forEach((s, k) => { if (pop[k] <= 0) return; const x = cx + s / (NRES - 1) * cw, y = cy + (1 - f1[s]) * ch;
+    // the pen's tip, while it draws
+    if (head > 0 && head < NRES - 1){ const i = Math.floor(head); dot(cx + i / (NRES - 1) * cw, cy + (1 - f1[i]) * ch, 2.6, C.ink, 12, .9); }
+    // each site's marker rides the pen up its peak and stays on the top
+    SITES.forEach((s, k) => { if (pop[k] <= 0) return; const i = Math.min(Math.floor(head), s), x = cx + i / (NRES - 1) * cw, y = cy + (1 - f1[i]) * ch;
       const g = ctx.createLinearGradient(0, cy, 0, cy + ch); g.addColorStop(0, `rgba(255,122,58,${.18 * pop[k] + .15 * flash[k]})`); g.addColorStop(1, 'rgba(255,122,58,0)');
       ctx.globalAlpha = F; ctx.fillStyle = g; ctx.fillRect(x - 6, cy, 12, ch); ctx.globalAlpha = 1;
       dot(x, y - 8, (4 + Math.sin(t * 3 + s)) * (.4 + .6 * pop[k]) + 3 * flash[k], C.site, 18 + 14 * flash[k], pop[k]); });
