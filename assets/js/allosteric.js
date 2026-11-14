@@ -17,16 +17,17 @@ export function initAllosteric(root){
   const r = rng(11), gauss = () => { let s = 0; for (let i = 0; i < 6; i++) s += r(); return (s - 3) / 1.2; };
   const conf = Array.from({length: 320}, (_, i) => { const act = i % 5 < 2; return {x: act ? .7 + gauss() * .09 : .3 + gauss() * .1, y: act ? .68 + gauss() * .09 : .32 + gauss() * .1, p: r() * 6.28, act}; });
   const probes = Array.from({length: 130}, () => ({x: clamp(r() * .95 + .02), y: clamp(Math.pow(r(), 1.4) * .95 + .02), p: r() * 6.28, d: r()}));
-  const NRES = 200, f1 = [], f2 = [], SITES = [46, 118, 163];
+  // the profile: a low baseline, plus one peak per site that rises only while that site is being found
+  const NRES = 200, b1 = [], b2 = [], SITES = [46, 118, 163], bump = SITES.map(c => Array.from({length: NRES}, (_, i) => Math.exp(-((i - c) ** 2) / 40)));
   for (let i = 0; i < NRES; i++){
-    const peak = SITES.reduce((s, c) => s + Math.exp(-((i - c) ** 2) / 40), 0);
-    f1.push(clamp(.18 + .55 * peak + .08 * Math.sin(i * .21) + .05 * Math.sin(i * .9)));
-    f2.push(clamp(.12 + .45 * peak + .1 * Math.sin(i * .13 + 1) + .05 * Math.cos(i * .7)));
+    b1.push(.18 + .08 * Math.sin(i * .21) + .05 * Math.sin(i * .9));
+    b2.push(.12 + .1 * Math.sin(i * .13 + 1) + .05 * Math.cos(i * .7));
   }
-  // three discoveries, one per allosteric site. At each moment, all at once: the trajectory hops to the other
-  // state, the site's peak lights up on the profile and its cluster of probes lights up in the probe panel
-  // (two clusters top right, one bottom left)
-  const EVENTS = [.32, .52, .72], HOP = .05;
+  const f1 = new Array(NRES), f2 = new Array(NRES);
+  // three discoveries, one per allosteric site. Each is one movement, all in step: while the trajectory travels
+  // from one state to the other, that site's peak rises on the profile and its cluster of probes appears in the
+  // probe panel (two clusters top right, one bottom left); they arrive together
+  const EVENTS = [.38, .58, .78], HOP = .12;
   const CLUSTERS = [[.74, .8], [.2, .24], [.9, .6]].map(([cx, cy]) => Array.from({length: 8}, () => ({x: clamp(cx + gauss() * .045), y: clamp(cy + gauss() * .05), p: r() * 6.28})));
   let F = 1;   // end-of-cycle fade, applied to everything
 
@@ -42,8 +43,8 @@ export function initAllosteric(root){
     if (!paused) clock += dt;
     const t = clock, c = (t % CYCLE) / CYCLE;
     F = 1 - clamp((c - .92) / .06);
-    // how far each discovery has played out (0 before, rising to 1 at its moment), and the flash right after it
-    const pop = EVENTS.map(e => ease(clamp((c - e) / .03))), flash = EVENTS.map(e => { const u = (c - e) / .08; return u > 0 && u < 1 ? Math.sin(Math.PI * u) : 0; });
+    // how far each discovery has played out (0 before the trajectory sets off, 1 when it arrives), and the flash on arrival
+    const pop = EVENTS.map(e => ease(clamp((c - (e - HOP)) / HOP))), flash = EVENTS.map(e => { const u = (c - e) / .08; return u > 0 && u < 1 ? Math.sin(Math.PI * u) : 0; });
     ctx.clearRect(0, 0, W, H);
     const narrow = W < 520, pad = narrow ? 24 : 32, gap = 32, top = narrow ? 56 : 32;   // room for the pause button (top right on phones, bottom right otherwise)
     const pw = narrow ? W - pad * 2 : (W - pad * 2 - gap) / 2, ph = narrow ? H * .2 : H * .36;
@@ -58,7 +59,7 @@ export function initAllosteric(root){
     const reveal = ease(clamp(c * 5));
     conf.forEach((q, i) => { if (i / conf.length > reveal) return; const x = ax + (q.x + .01 * Math.sin(t * .8 + q.p)) * pw, y = ay + (1 - q.y + .01 * Math.cos(t * .7 + q.p)) * ph; dot(x, y, 1.4, q.act ? C.violet : C.blue, 4, .75); });
     // the trajectory rests in one state and hops to the other, arriving exactly at each discovery
-    let state = 0; EVENTS.forEach(e => { state += ease(clamp((c - (e - HOP)) / HOP)); });
+    const state = pop.reduce((s, k) => s + k, 0);
     const side = state % 2 <= 1 ? state % 2 : 2 - state % 2;   // 0 inactive … 1 active, back and forth
     const tx = ax + (.3 + .4 * side + .03 * Math.sin(t * 2.3)) * pw, ty = ay + (1 - (.32 + .36 * side + .03 * Math.cos(t * 1.9))) * ph;
     dot(tx, ty, 4 + 3 * Math.max(...flash), C.site, 16 + 14 * Math.max(...flash));
@@ -78,6 +79,7 @@ export function initAllosteric(root){
     // C: allosteric profile
     const cx = pad, cy = by + ph + 32, cw = W - pad * 2, ch = H - cy - (narrow ? 32 : 64);
     panel(cx, cy, cw, ch);
+    for (let i = 0; i < NRES; i++){ let p = 0; for (let k = 0; k < 3; k++) p += pop[k] * bump[k][i]; f1[i] = clamp(b1[i] + .55 * p); f2[i] = clamp(b2[i] + .45 * p); }
     const draw = ease(clamp((c - .05) / .2)), n = Math.floor(NRES * draw);
     for (const [arr, col, dash] of [[f1, C.blue, []], [f2, C.violet, [5, 4]]]){
       ctx.globalAlpha = F; ctx.setLineDash(dash); ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.shadowColor = col; ctx.shadowBlur = 8; ctx.beginPath();
