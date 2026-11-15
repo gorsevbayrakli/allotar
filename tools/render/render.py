@@ -50,6 +50,8 @@ def breathe(n=60):
 
 SURF = dict(rep='surface', cols=['#86aef2', '#b7aef6', '#ffe0ba'], siteCol='#ff9a5c', blob=24, res=200, exposure=1.2)
 JOBS = {'sprev': (lambda: [breathe()[0], breathe()[-1]], dict(w=560, h=624, samples=128, grow=1.3, dist=10.2, **SURF)),
+        # home story as a surface: the open → closed clip plus the lit closed still as its last frame (same crop)
+        'smorph': (lambda: morph() + [dict(lam=1, glow=1)], dict(w=1400, h=1558, samples=384, grow=1.1, dist=10.2, rotY=-.3, rotX=.05, site=0, swell=0, **SURF)),
         'sbreathe': (breathe, dict(w=1400, h=1558, samples=384, grow=1.1, dist=10.2, **SURF)),
         'breathe': (breathe, dict(w=1400, h=1558, samples=384, grow=1.1, dist=10.2)),
         'morph': (morph, dict(w=1400, h=1558, samples=384, grow=1.1, dist=10.2, rotY=-.3, rotX=.05, site=0, swell=0)),
