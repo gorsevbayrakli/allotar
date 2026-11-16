@@ -183,18 +183,20 @@ section{position:relative}
 /* big words over a photo collage */
 .words .row{position:relative;display:grid;grid-template-columns:repeat(12,1fr);align-items:center;margin-bottom:var(--s-row)}
 /* the three approach panels are portrait animations on the section's own navy */
-.words .ph{grid-row:1;border-radius:24px;overflow:hidden;aspect-ratio:760/1040;background:#080f2e;box-shadow:0 40px 80px -40px rgba(0,0,0,.55);will-change:transform}
+.words .fig{grid-row:1;margin:0;will-change:transform}
+.words .fig figcaption{margin-top:12px;font-size:12px;line-height:1.5;color:var(--dim)}
+.words .ph{border-radius:24px;overflow:hidden;aspect-ratio:760/1040;background:#080f2e;box-shadow:0 40px 80px -40px rgba(0,0,0,.55)}
 .words .ph video{display:block;width:100%;height:100%;object-fit:cover}
 .words .word{grid-row:1;position:relative;z-index:2;font-size:clamp(40px,5.6vw,86px);font-weight:300;letter-spacing:-.05em;line-height:.95;color:var(--ink);will-change:transform;white-space:nowrap}
 .words .cap{grid-row:2;margin-top:24px;max-width:36ch}
 /* desktop: the animation on one side, the word and its caption beside it, sides alternating */
 .words .row{column-gap:24px;grid-template-rows:1fr auto 1fr}
-.words .row .ph{grid-row:1 / span 3}
+.words .row .fig{grid-row:1 / span 3}
 .words .row .word{grid-row:2;margin:0 0 24px}
 .words .row .cap{grid-row:3;margin-top:0;align-self:start}
-.words .row:nth-child(odd) .ph{grid-column:2 / span 4}
+.words .row:nth-child(odd) .fig{grid-column:2 / span 4}
 .words .row:nth-child(odd) .word,.words .row:nth-child(odd) .cap{grid-column:7 / span 6;justify-self:start}
-.words .row:nth-child(even) .ph{grid-column:8 / span 4}
+.words .row:nth-child(even) .fig{grid-column:8 / span 4}
 .words .row:nth-child(even) .word,.words .row:nth-child(even) .cap{grid-column:1 / span 6;justify-self:end;text-align:right}
 
 /* legal pages: plain reading text */
@@ -514,9 +516,9 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   .story .selmap{left:50%;aspect-ratio:auto;transform:translate(-50%,12px)}
   .story.last .selmap{transform:translate(-50%,0)}
   .words .row{grid-template-columns:1fr;grid-template-rows:auto}
-  .words .row .ph{width:min(100%,420px)}
-  .words .row .ph,.words .row .word,.words .row .cap{grid-column:1!important;text-align:left!important;justify-self:start!important}
-  .words .row .ph{grid-row:1!important} .words .row .word{margin-bottom:0}
+  .words .row .fig{width:min(100%,420px)}
+  .words .row .fig,.words .row .word,.words .row .cap{grid-column:1!important;text-align:left!important;justify-self:start!important}
+  .words .row .fig{grid-row:1!important} .words .row .word{margin-bottom:0}
   .words .row .word{justify-self:start!important;margin-top:24px;grid-row:2;font-size:clamp(40px,11vw,90px);white-space:nowrap}
   .words .row .cap{grid-row:3;margin-top:16px}
 }
