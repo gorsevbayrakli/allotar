@@ -69,7 +69,7 @@ const route = (a, m, b) => new THREE.CatmullRomCurve3([xz(a[0], a[1]), xz(m[0], 
 const FWD = [route(W1, [-1.5, -6.7], F1), route(F1, [.5, -6.1], F2), route(F2, [2.6, -6.2], F3), route(F3, [4.7, -7.6], W2)];
 const BACK = [route(W2, [4.9, -10.5], R1), route(R1, [1.6, -11.8], R2), route(R2, [-1.8, -10.2], W1)];
 const LOOP = 31, FADE_AT = 28.8;
-const BF = 64, FILM = 12.8;   // protein: Allotar's own dynamics film (open → metastable → closed → back), 64 frames, a seamless 12.8 s loop
+const BF = 89, FILM = 5.93;   // protein: Allotar's Nurr1 film (transparent master, every second frame), a seamless 5.9 s loop
 // every sample: where it appears, when, and whether it belongs to the forward or the backward transition
 function buildSamples(){
   const r = rng(21), S = [];
@@ -123,7 +123,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
     const el = document.createElement('canvas'); el.className = 'hero-seq'; el.setAttribute('aria-hidden', 'true');
     canvas.after(el); layer = canvas2d(el);
     const size = Math.min(innerWidth, innerHeight * .8) < 700 ? 's' : 'l';
-    const img = k => { const im = new Image(); im.decoding = 'async'; im.src = new URL(`../img/protein/film/${size}/${String(k).padStart(3, '0')}.webp`, import.meta.url).href; return im; };
+    const img = k => { const im = new Image(); im.decoding = 'async'; im.src = new URL(`../img/protein/nurr1/${size}/${String(k).padStart(3, '0')}.webp`, import.meta.url).href; return im; };
     const first = img(0), frames = [first];
     first.decode?.().catch(() => {}).finally(() => { for (let k = 1; k < BF; k++) frames[k] = img(k); });
     const ok = im => im && im.complete && im.naturalWidth > 0;
@@ -169,7 +169,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
       const a = intro * clamp(1 - p * 1.15);
       if (seq.all){
         // the film plays forwards from frame 0 and wraps (its last frame leads back into the first); neighbouring
-        // frames are blended so the 5 fps film moves smoothly
+        // frames are blended so the 15 fps frames move smoothly
         if (seq.t0 === undefined) seq.t0 = t;
         const f = ((t - seq.t0) / FILM % 1) * BF, i = Math.floor(f) % BF, w = f - Math.floor(f);
         ctx.globalAlpha = a; ctx.drawImage(seq.frames[i], x0, y0, bw, sc);
