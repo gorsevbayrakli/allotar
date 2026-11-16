@@ -69,7 +69,7 @@ const route = (a, m, b) => new THREE.CatmullRomCurve3([xz(a[0], a[1]), xz(m[0], 
 const FWD = [route(W1, [-1.5, -6.7], F1), route(F1, [.5, -6.1], F2), route(F2, [2.6, -6.2], F3), route(F3, [4.7, -7.6], W2)];
 const BACK = [route(W2, [4.9, -10.5], R1), route(R1, [1.6, -11.8], R2), route(R2, [-1.8, -10.2], W1)];
 const LOOP = 31, FADE_AT = 28.8;
-const BF = 60, BREATH = 9;   // protein loop: frames in half a cycle, seconds for a whole cycle
+const BF = 64, FILM = 12.8;   // protein: Allotar's own dynamics film (open → metastable → closed → back), 64 frames, a seamless 12.8 s loop
 // every sample: where it appears, when, and whether it belongs to the forward or the backward transition
 function buildSamples(){
   const r = rng(21), S = [];
@@ -117,13 +117,13 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
   const DUST = []; { const r = rng(9); for (let i = 0; i < 300; i++) DUST.push([(r() - .5) * 40, (r() - .1) * 14, -r() * 30 + 4, r() * 6.28, .1 + r() * .25, .02 + r() * .05, .1 + r() * .4]); }
   const DCOL = hdr('#9fb8ff', 1.1);
 
-  // protein: path-traced stills on their own 2D layer above the landscape
+  // protein: frames of the dynamics film (rendered with a transparent background) on their own 2D layer above the landscape
   let seq = null, layer = null;
   if (mode === 'protein'){
     const el = document.createElement('canvas'); el.className = 'hero-seq'; el.setAttribute('aria-hidden', 'true');
     canvas.after(el); layer = canvas2d(el);
     const size = Math.min(innerWidth, innerHeight * .8) < 700 ? 's' : 'l';
-    const img = k => { const im = new Image(); im.decoding = 'async'; im.src = new URL(`../img/protein/surface/${size}/${String(k).padStart(3, '0')}.webp`, import.meta.url).href; return im; };
+    const img = k => { const im = new Image(); im.decoding = 'async'; im.src = new URL(`../img/protein/film/${size}/${String(k).padStart(3, '0')}.webp`, import.meta.url).href; return im; };
     const first = img(0), frames = [first];
     first.decode?.().catch(() => {}).finally(() => { for (let k = 1; k < BF; k++) frames[k] = img(k); });
     const ok = im => im && im.complete && im.naturalWidth > 0;
@@ -161,18 +161,19 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
       let cx, cy, bh;
       if (phone){ const top = 88, bot = h1.getBoundingClientRect().top - canvas.getBoundingClientRect().top - 16; bh = Math.max(120, bot - top); cy = (top + bot) / 2; cx = W / 2; }
       else if (narrow2){ bh = H * .44; cx = W / 2; cy = 88 + bh / 2; }
-      else { bh = Math.min(H * .42, W * .3); cx = W * .76; cy = H * .5; }
+      else { bh = Math.min(H * .5, W * .34); cx = W * .76; cy = H * .5; }
       const intro = ease(prog(t, .2, 1.6)), sc = (.94 + .06 * intro) * bh * (1 + .012 * Math.sin(t * .4)), bw = sc * seq.ratio;
       // slow float; sub-pixel positions keep the glide smooth
       const x0 = cx - bw / 2 + mx * 14, y0 = cy - sc / 2 - p * H * .22 + my * 8 + 6 * Math.sin(t * .55);
       ctx.clearRect(0, 0, W, H);
       const a = intro * clamp(1 - p * 1.15);
       if (seq.all){
-        // the loop starts at frame 0 whenever it starts: forwards over the first half, backwards over the second
+        // the film plays forwards from frame 0 and wraps (its last frame leads back into the first); neighbouring
+        // frames are blended so the 5 fps film moves smoothly
         if (seq.t0 === undefined) seq.t0 = t;
-        const c = ((t - seq.t0) / BREATH) % 1, f = (c < .5 ? c * 2 : 2 - c * 2) * (BF - 1), i = Math.min(BF - 2, Math.floor(f)), w = f - i;
+        const f = ((t - seq.t0) / FILM % 1) * BF, i = Math.floor(f) % BF, w = f - Math.floor(f);
         ctx.globalAlpha = a; ctx.drawImage(seq.frames[i], x0, y0, bw, sc);
-        if (w > .01){ ctx.globalAlpha = a * w; ctx.drawImage(seq.frames[i + 1], x0, y0, bw, sc); }
+        if (w > .01){ ctx.globalAlpha = a * w; ctx.drawImage(seq.frames[(i + 1) % BF], x0, y0, bw, sc); }
       } else if (seq.ok(seq.first)){ ctx.globalAlpha = a; ctx.drawImage(seq.first, x0, y0, bw, sc); }
       ctx.globalAlpha = 1;
       camera.position.set(mx * .8, 2.2 + p * .8 - my * .4, (narrow ? 18 : 12.5) - p * 2.5);
