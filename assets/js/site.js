@@ -20,17 +20,44 @@ if (loader){
   }
 }
 
-// ---------- section themes: the page background follows the section in the middle of the screen ----------
+// ---------- section themes: each section paints its own colour behind it; the nav follows the section mid-screen ----------
 const themed = $$('[data-theme]');
 const orbs = document.createElement('div'); orbs.className = 'orbs'; orbs.setAttribute('aria-hidden', 'true'); orbs.innerHTML = '<i></i><i></i><i></i>';
 document.body.prepend(orbs);
 const orbEls = $$('i', orbs), ORB = [[.9, -.06, 40], [-.7, .05, 52], [.6, -.1, 46]];
 let tone = '';
+// each section's colour sits behind that section itself and scrolls with it (a short feather at each change), so
+// text near a boundary is always on its own background; the tone above only drives the nav and the orbs
+const pageBg = document.createElement('div'); pageBg.className = 'pagebg'; pageBg.setAttribute('aria-hidden', 'true'); document.body.prepend(pageBg);
+const COL = {light: '#ffffff', mist: '#eef0f8', navy: '#0a1030'}, FEATHER = 48;
+let lastBg = '';
+function paintBg(){
+  const H = innerHeight, bands = [];
+  for (const sec of themed){
+    // a section that overlaps the one before it (negative margin) takes over from its own top, as it is drawn on top
+    const r = sec.getBoundingClientRect(), last = bands[bands.length - 1];
+    if (last && r.top < last[1]) last[1] = r.top;
+    bands.push([r.top, r.bottom, COL[sec.dataset.theme] || COL.light]);
+  }
+  const stops = []; let prev = null;
+  for (const [a, b, c] of bands){
+    if (a > H + FEATHER) break;
+    if (b < -FEATHER || b <= a){ if (b > a) prev = c; continue; }
+    if (prev && prev !== c){ stops.push(`${prev} ${Math.round(a - FEATHER)}px`, `${c} ${Math.round(a + FEATHER)}px`); }
+    else if (!stops.length) stops.push(`${c} 0px`);
+    prev = c;
+  }
+  if (!stops.length) stops.push(`${COL.light} 0px`);
+  stops.push(`${prev || COL.light} ${H}px`);
+  const bg = `linear-gradient(to bottom, ${stops.join(', ')})`;
+  if (bg !== lastBg){ lastBg = bg; pageBg.style.background = bg; }
+}
 function onScrollFx(){
   const y = scrollY, mid = innerHeight * .55;
   let t = 'light';
   for (const s of themed){ const r = s.getBoundingClientRect(); if (r.top <= mid && r.bottom > mid){ t = s.dataset.theme; break; } }
   if (t !== tone){ tone = t; document.documentElement.dataset.tone = t; }
+  paintBg();
   // orbs drift slowly on their own and move at different speeds with the scroll
   const now = performance.now() / 1000;
   orbEls.forEach((o, i) => { const [sx, sy, a] = ORB[i]; o.style.transform = `translate3d(${Math.sin(now * .07 + i * 2) * a + sx * (y % 2400) * .02}px, ${Math.cos(now * .05 + i) * a + sy * y}px, 0)`; });

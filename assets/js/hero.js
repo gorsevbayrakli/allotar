@@ -70,6 +70,17 @@ const FWD = [route(W1, [-1.5, -6.7], F1), route(F1, [.5, -6.1], F2), route(F2, [
 const BACK = [route(W2, [4.9, -10.5], R1), route(R1, [1.6, -11.8], R2), route(R2, [-1.8, -10.2], W1)];
 const LOOP = 31, FADE_AT = 28.8;
 const BF = 89, FILM = 5.93;   // protein: Allotar's Nurr1 film (transparent master, every second frame), a seamless 5.9 s loop
+// the lights follow the film: the film plays at 3/4 speed after a short rest on the open state. While the protein is
+// open the open well fills; as it closes the lights travel to the other well; while it stays closed that well fills;
+// as it opens again they travel back, and they clear during the next rest. (Film phases measured from its silhouette:
+// closing until 22 %, closed until 79 %, then opening.)
+const SPEED = .75, HOLD = 1.6, FD = FILM / SPEED, CYCLE = HOLD + FD, CLOSED = .22, OPENS = .79;
+function filmCycle(c){
+  if (c < HOLD) return {f: 0, u: c < .5 ? FADE_AT + c / .5 * (LOOP - FADE_AT) : (c - .5) / (HOLD - .5) * 4.5};
+  const ph = (c - HOLD) / FD;
+  const u = ph < CLOSED ? 4.5 + ph / CLOSED * 8.7 : ph < OPENS ? 13.2 + (ph - CLOSED) / (OPENS - CLOSED) * 4 : 17.2 + (ph - OPENS) / (1 - OPENS) * (FADE_AT - 17.2);
+  return {f: ph * BF, u};
+}
 // every sample: where it appears, when, and whether it belongs to the forward or the backward transition
 function buildSamples(){
   const r = rng(21), S = [];
@@ -143,7 +154,10 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
 
     // lights: each sample fades in where it is found and stays until the loop fades out
     lights.n = 0;
-    const u = t % LOOP, out = 1 - prog(u, FADE_AT, LOOP - FADE_AT - .3);
+    // with the protein film loaded, its clock drives the lights; until then (and on pages without it) they run on their own
+    let u = t % LOOP, fr = null;
+    if (seq && seq.all){ if (seq.t0 === undefined) seq.t0 = t; const fc = filmCycle((t - seq.t0) % CYCLE); u = fc.u; fr = fc.f; }
+    const out = 1 - prog(u, FADE_AT, LOOP - FADE_AT - .3);
     for (const L of SAMPLES){
       if (u < L.t) continue;
       const k = ease(prog(u, L.t, .6)), flash = Math.sin(Math.PI * prog(u, L.t, .6)), x = L.x + .03 * Math.sin(t * 2.3 + L.ph), z = L.z + .03 * Math.cos(t * 2 + L.ph);
@@ -168,10 +182,8 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
       ctx.clearRect(0, 0, W, H);
       const a = intro * clamp(1 - p * 1.15);
       if (seq.all){
-        // the film plays forwards from frame 0 and wraps (its last frame leads back into the first); neighbouring
-        // frames are blended so the 15 fps frames move smoothly
-        if (seq.t0 === undefined) seq.t0 = t;
-        const f = ((t - seq.t0) / FILM % 1) * BF, i = Math.floor(f) % BF, w = f - Math.floor(f);
+        // the frame comes from the shared film cycle above; neighbouring frames are blended so the motion stays smooth
+        const f = fr, i = Math.floor(f) % BF, w = f - Math.floor(f);
         ctx.globalAlpha = a; ctx.drawImage(seq.frames[i], x0, y0, bw, sc);
         if (w > .01){ ctx.globalAlpha = a * w; ctx.drawImage(seq.frames[(i + 1) % BF], x0, y0, bw, sc); }
       } else if (seq.ok(seq.first)){ ctx.globalAlpha = a; ctx.drawImage(seq.first, x0, y0, bw, sc); }
