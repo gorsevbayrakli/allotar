@@ -1,98 +1,214 @@
-// Allosteric discovery charts (2D canvas, glowing on dark), drawn without any text: conformational landscape,
-// probe density vs proximity, and the allosteric profile along the sequence. Three sites are found one by one; at
-// each, the trajectory hops state, the site's peak and its probe cluster light up together.
-import {animate, rng, clamp, ease} from './gl.js';
+// Allosteric discovery card: a probe sweeps the receptor and settles on three allosteric sites.
+//
+// The receptor is ray traced from the deposited structure, and the four sites marked on it are the allosteric
+// sites described for it in the literature, projected through the same camera. Two of them sit inside the helix
+// bundle and are drawn as a glow rather than a ring, because from this view the helices cover them. The probe
+// walks the chain one residue at a time, sitting at each residue's own projected position just in front of the
+// nearest surface, so it stays on the receptor and the helices in front of it still cover it.
+//
+// One of the four documented sites is passed over. It rises only modestly on both features, so it never reaches
+// the corner, and its ring on the profile stays cool: a card that only ever hits would not be worth believing.
+//
+// The three charts illustrate how a site is chosen rather than reproducing one run: picking sites weighs several
+// things at once, so a card driven by a single score would misrepresent the work. A site is a place where both
+// features are high at the same time. Two decoys are built in, each tall on one feature alone and passed over,
+// which is what makes the rule legible. The feature space is those same two profiles plotted against each other,
+// so the two panels cannot disagree, and the landscape is the receptor's two populations with the ensemble moving
+// between them as the sites are found.
+import {animate, rng, clamp, ease, REDUCED} from './gl.js';
 
-const C = {axis: 'rgba(160,180,255,.22)', grid: 'rgba(160,180,255,.06)', dim: '#7d88b3', ink: '#dfe6ff', blue: '#59a8ff', violet: '#a08cff', site: '#ff7a3a', teal: '#19d3a8'};
-const CYCLE = 14;
+const META = {"w":378,"h":640,"frames":[[0,0,73,73,139.0,80.5],[74,0,60,73,125.0,123.0],[135,0,70,73,125.0,122.0],[206,0,73,73,125.0,167.0],[280,0,67,64,106.5,170.5],[348,0,64,72,129.0,212.5],[413,0,73,73,85.0,219.5],[487,0,73,73,113.5,258.0],[561,0,73,71,65.5,266.5],[635,0,73,72,99.0,294.0],[709,0,73,65,55.5,316.0],[783,0,66,73,87.5,333.0],[850,0,73,73,49.0,362.0],[924,0,73,73,60.5,370.5],[998,0,73,73,42.0,412.0],[1072,0,73,73,35.5,408.5],[0,74,73,73,24.0,452.0],[74,74,73,73,49.0,442.0],[148,74,73,73,87.5,472.5],[222,74,73,73,147.5,457.5],[296,74,73,73,121.5,435.5],[370,74,71,73,152.5,399.5],[442,74,73,72,109.5,382.0],[516,74,73,73,143.0,351.5],[590,74,73,73,104.5,326.5],[664,74,73,73,132.0,302.5],[738,74,73,73,105.0,270.5],[812,74,73,73,111.0,256.0],[886,74,73,73,106.5,212.5],[960,74,73,71,84.5,195.0],[1034,74,73,73,122.0,168.0],[1108,74,73,73,87.0,139.0],[0,148,73,73,130.5,120.5],[74,148,73,73,91.0,89.0],[148,148,73,73,114.0,74.5],[222,148,73,73,73.0,89.0],[296,148,71,73,77.5,103.5],[368,148,73,73,90.5,137.0],[442,148,71,73,117.5,142.0],[514,148,73,72,115.0,187.0],[588,148,73,73,153.5,181.5],[662,148,73,71,140.0,229.5],[736,148,73,73,188.0,229.5],[810,148,73,69,162.5,275.5],[884,148,73,69,210.0,286.0],[958,148,73,73,181.5,317.5],[1032,148,70,73,223.5,335.0],[1103,148,73,70,213.0,367.0],[0,222,73,73,227.0,390.0],[74,222,72,65,244.5,409.5],[147,222,73,73,228.5,442.0],[221,222,73,73,267.0,458.5],[295,222,55,72,247.5,496.0],[351,222,73,73,290.5,505.0],[425,222,73,73,258.5,534.5],[499,222,73,73,262.5,517.0],[573,222,73,72,216.0,527.0],[647,222,73,73,220.5,478.0],[721,222,73,73,169.5,485.0],[795,222,73,73,151.0,454.0],[869,222,73,69,171.0,430.5],[943,222,73,73,176.0,402.0],[1017,222,73,60,174.0,378.5],[1091,222,73,73,199.0,350.0],[0,296,73,73,174.0,315.5],[74,296,73,73,219.5,301.5],[148,296,73,73,190.5,264.5],[222,296,73,73,220.5,234.0],[296,296,73,73,184.0,215.5],[370,296,73,65,194.5,183.5],[444,296,73,73,178.5,154.0],[518,296,70,67,173.0,136.5],[589,296,73,73,146.0,83.0],[663,296,73,73,163.0,36.0],[737,296,73,73,162.0,2.5],[811,296,73,71,127.5,34.0],[885,296,73,73,151.0,80.5],[959,296,73,73,180.5,119.0],[1033,296,73,73,214.0,106.0],[1107,296,73,73,259.0,97.5],[0,370,73,73,306.5,84.0],[74,370,73,73,310.0,102.0],[148,370,73,73,293.0,141.0],[222,370,73,60,303.5,161.5],[296,370,73,73,276.5,187.5],[370,370,73,73,310.0,210.5],[444,370,73,73,268.0,234.0],[518,370,73,73,308.5,263.5],[592,370,73,73,261.0,280.0],[666,370,73,73,313.5,293.5],[740,370,73,73,279.5,331.0],[814,370,73,73,319.5,351.5],[888,370,73,73,278.5,379.0],[962,370,73,73,322.0,404.5],[1036,370,73,73,281.5,428.0],[1110,370,73,73,321.5,456.5],[0,444,73,73,295.0,474.0],[74,444,73,73,310.0,510.5],[148,444,73,73,304.0,528.0],[222,444,73,73,289.0,564.0],[296,444,73,73,252.0,590.0],[370,444,73,73,276.5,575.0],[444,444,73,73,247.5,604.5],[518,444,73,73,210.0,573.5],[592,444,73,71,249.5,552.5],[666,444,73,65,212.0,531.0],[740,444,63,70,250.0,497.0],[804,444,73,73,224.0,480.0],[878,444,73,73,237.0,444.5],[952,444,73,73,241.0,428.5],[1026,444,73,73,229.5,391.0],[1100,444,63,73,260.0,373.0],[0,518,69,73,225.5,340.0],[70,518,73,73,263.0,317.5],[144,518,73,73,226.0,286.5],[218,518,73,73,274.0,269.0],[292,518,70,73,250.0,225.5],[363,518,73,73,300.0,220.0],[437,518,73,73,277.0,181.0],[511,518,73,71,319.0,169.0],[585,518,73,73,308.0,138.0],[659,518,63,73,342.5,119.5],[723,518,73,72,299.0,101.0],[797,518,73,73,247.5,80.5],[871,518,73,67,209.0,103.0],[945,518,73,73,236.0,132.0],[1019,518,73,73,195.5,155.5],[1093,518,73,73,219.0,167.0],[0,592,73,73,193.0,204.0],[74,592,73,73,196.0,212.0],[148,592,73,73,194.5,252.0],[222,592,73,73,166.5,263.5],[296,592,73,73,181.5,308.0],[370,592,73,73,134.0,307.5],[444,592,63,73,159.5,350.0],[508,592,73,73,129.0,376.0],[582,592,73,73,158.0,401.5],[656,592,73,73,113.0,415.0],[730,592,73,73,139.5,453.5],[804,592,73,73,110.0,486.5],[878,592,73,73,91.0,467.0],[952,592,73,73,51.5,476.0],[1026,592,73,73,40.0,482.0],[1100,592,73,73,1.0,471.0]],"stops":[5,26,46,83,139],"marks":[{"id":"vestibule","x":174.4,"y":203.8,"known":1},{"id":"tm234","x":154.5,"y":256.7,"known":1},{"id":"tm345","x":262.8,"y":390.1,"known":1},{"id":"upper","x":321.8,"y":160.6,"known":0},{"id":"lower","x":123.7,"y":458.5,"known":0}],"known":[{"id":"vestibule","x":174.4,"y":203.8,"buried":0.55},{"id":"tm234","x":154.5,"y":256.7,"buried":0.0},{"id":"tm345","x":262.8,"y":390.1,"buried":0.0},{"id":"sodium","x":194.9,"y":311.2,"buried":0.8}],"knownU":[{"id":"vestibule","u":0.035,"found":1},{"id":"tm234","u":0.1818,"found":1},{"id":"tm345","u":0.3217,"found":1},{"id":"sodium","u":0.9091,"found":0}],"prof1":[0.199,0.2031,0.2123,0.2322,0.2723,0.3431,0.453,0.5993,0.7617,0.9035,0.9842,0.9773,0.8842,0.7335,0.5662,0.4178,0.307,0.2353,0.194,0.1722,0.1608,0.1545,0.1505,0.1476,0.1455,0.1441,0.1434,0.1432,0.1437,0.1447,0.1461,0.148,0.1502,0.1526,0.1552,0.1579,0.1606,0.1632,0.1658,0.1683,0.1707,0.173,0.1752,0.1775,0.1805,0.1857,0.1961,0.2182,0.2613,0.3369,0.4523,0.6035,0.7686,0.91,0.9875,0.977,0.8824,0.7342,0.5737,0.4349,0.3347,0.2734,0.2415,0.228,0.2242,0.2247,0.2268,0.2294,0.2321,0.2346,0.2369,0.2389,0.2406,0.2419,0.2428,0.2433,0.2434,0.2431,0.2424,0.2414,0.24,0.2384,0.2365,0.2344,0.2323,0.2303,0.2291,0.2306,0.2382,0.259,0.303,0.3814,0.5,0.652,0.812,0.9409,1.0,0.9697,0.8594,0.703,0.5416,0.4067,0.3117,0.2545,0.2249,0.212,0.2076,0.2071,0.2079,0.2092,0.2105,0.2116,0.2126,0.2134,0.2145,0.2167,0.2219,0.2337,0.2574,0.2998,0.3672,0.4618,0.5777,0.6992,0.8026,0.8634,0.8652,0.8068,0.7025,0.5763,0.4526,0.349,0.2728,0.2229,0.1936,0.1781,0.1707,0.1677,0.167,0.1675,0.1688,0.1708,0.1734,0.1765,0.1802,0.1845,0.1892,0.1942,0.1996,0.2051,0.2107,0.2162,0.2215,0.2264,0.2309,0.2349,0.2381,0.2406,0.2424,0.2433,0.2434,0.2428,0.2416,0.2403,0.2403,0.2444,0.2583,0.291,0.3538,0.4556,0.5949,0.7533,0.8955,0.9804,0.9797,0.8919,0.7436,0.5755,0.4241,0.3097,0.2351,0.1922,0.1698,0.1587,0.1529,0.1497,0.1476,0.1462,0.1454,0.1451,0.1454,0.1461,0.1474,0.1491,0.1512,0.1536,0.1563,0.1591,0.162,0.1648,0.1675,0.17,0.1722,0.1741,0.1754,0.1763,0.1765,0.1762,0.1753,0.1738,0.1717,0.1691,0.1661,0.1626,0.1588,0.1548,0.1507,0.1466,0.1426,0.1388,0.1354,0.1324,0.1299,0.128,0.1267,0.1261,0.1262,0.127,0.1285,0.1307,0.1336,0.1372,0.1413,0.1461,0.1513,0.1571,0.1632,0.1698,0.1767,0.1839,0.1913,0.1989,0.2065,0.2141,0.2217,0.229,0.236,0.2426,0.2487,0.2541,0.2588,0.2627,0.2656,0.2676,0.2687,0.2687,0.2678,0.266,0.2634,0.2603,0.257,0.2542,0.253,0.2551,0.2627,0.2784,0.3039,0.3394,0.3825,0.4275,0.4664,0.4908,0.4949,0.4768,0.4401,0.3918,0.3403,0.2931,0.2546,0.2264,0.2082,0.1988,0.1987,0.2111,0.2434,0.3059,0.4075,0.5477,0.7099,0.8597,0.956,0.9685,0.8931,0.7541,0.5917,0.4434,0.3316,0.2596,0.22,0.2014],"prof2":[0.1755,0.1798,0.1889,0.2083,0.2467,0.314,0.4181,0.5564,0.7098,0.8442,0.9215,0.9168,0.8315,0.6922,0.5373,0.4,0.2976,0.2316,0.1939,0.174,0.1637,0.1578,0.1539,0.1508,0.1484,0.1465,0.1453,0.1449,0.1452,0.1463,0.1484,0.1512,0.155,0.1595,0.1648,0.1707,0.1773,0.1843,0.1916,0.1992,0.2069,0.2145,0.2221,0.2296,0.2374,0.2467,0.2605,0.2843,0.3272,0.3994,0.5079,0.6489,0.8017,0.9313,1.0,0.9852,0.8907,0.7451,0.5872,0.4489,0.3464,0.2797,0.2406,0.2187,0.206,0.1978,0.1916,0.1866,0.1825,0.179,0.1762,0.1741,0.1725,0.1714,0.1708,0.1704,0.1703,0.1702,0.1701,0.17,0.1697,0.1691,0.1684,0.1673,0.1662,0.165,0.1646,0.1665,0.1743,0.1943,0.2362,0.3103,0.4224,0.5659,0.7173,0.8398,0.8973,0.8714,0.771,0.6276,0.4798,0.3569,0.2713,0.2211,0.1966,0.1875,0.1861,0.1879,0.1907,0.1933,0.1955,0.197,0.1977,0.1977,0.1969,0.1954,0.1931,0.1902,0.1868,0.1829,0.1786,0.1742,0.1697,0.1651,0.1607,0.1565,0.1526,0.1491,0.1459,0.1432,0.1409,0.139,0.1376,0.1366,0.1359,0.1356,0.1356,0.1358,0.1363,0.137,0.1378,0.1387,0.1396,0.1406,0.1416,0.1425,0.1434,0.1442,0.145,0.1456,0.1462,0.1466,0.1469,0.1472,0.1474,0.1475,0.1476,0.1476,0.1476,0.1476,0.1476,0.1475,0.1476,0.1483,0.1505,0.1571,0.1731,0.2071,0.2694,0.3684,0.5025,0.6547,0.7918,0.8754,0.8789,0.8012,0.667,0.5144,0.3778,0.2759,0.2114,0.1766,0.161,0.1557,0.1554,0.1569,0.159,0.1612,0.1633,0.165,0.1664,0.1675,0.1682,0.1686,0.1687,0.1686,0.1683,0.1679,0.1676,0.1674,0.1675,0.1678,0.1685,0.1697,0.1713,0.1733,0.1758,0.1788,0.1821,0.1857,0.1896,0.1938,0.1984,0.2038,0.2111,0.2228,0.243,0.2776,0.3337,0.4166,0.5263,0.6532,0.7779,0.8749,0.9205,0.9027,0.8255,0.708,0.576,0.4528,0.353,0.2813,0.2344,0.2058,0.1888,0.1785,0.1716,0.1666,0.1628,0.1598,0.1577,0.1565,0.1563,0.157,0.1586,0.1612,0.1645,0.1686,0.1733,0.1784,0.1838,0.1894,0.195,0.2004,0.2055,0.2101,0.2143,0.2178,0.2208,0.2232,0.2254,0.2278,0.2315,0.2379,0.2491,0.2671,0.2939,0.3294,0.3715,0.415,0.4526,0.4767,0.4819,0.4668,0.4344,0.3913,0.3453,0.3031,0.2689,0.2443,0.2287,0.2212,0.2222,0.2348,0.2658,0.3249,0.4203,0.5515,0.7028,0.8422,0.9309,0.9407,0.8676,0.7344,0.5789,0.4361,0.3261,0.2537,0.2119,0.1903],"fs":[[0.199,0.1794],[0.2087,0.1773],[0.2664,0.2338],[0.4538,0.4355],[0.7553,0.7018],[0.9842,0.9215],[0.7348,0.6801],[0.4174,0.409],[0.2178,0.2257],[0.1475,0.1572],[0.1305,0.1548],[0.1311,0.1543],[0.1462,0.1441],[0.1105,0.1379],[0.144,0.1478],[0.1281,0.145],[0.1399,0.149],[0.1744,0.1668],[0.1654,0.2031],[0.1631,0.2054],[0.1766,0.2229],[0.1646,0.2384],[0.2138,0.2404],[0.2725,0.3287],[0.444,0.5339],[0.7785,0.7861],[0.9875,1.0],[0.88,0.8996],[0.434,0.4576],[0.2921,0.271],[0.2307,0.2127],[0.2263,0.1824],[0.2219,0.1841],[0.2463,0.1939],[0.2217,0.1637],[0.2503,0.1455],[0.2373,0.1692],[0.2594,0.1792],[0.2371,0.1652],[0.2332,0.1882],[0.2267,0.1622],[0.2337,0.163],[0.2357,0.1598],[0.3029,0.2304],[0.5152,0.4309],[0.8117,0.726],[1.0,0.8973],[0.8593,0.7786],[0.5248,0.4843],[0.2898,0.2449],[0.208,0.1758],[0.2092,0.2171],[0.1984,0.1852],[0.2143,0.2034],[0.2111,0.195],[0.2258,0.2021],[0.2203,0.1892],[0.3003,0.1691],[0.4652,0.163],[0.7119,0.1676],[0.8645,0.1488],[0.7009,0.1199],[0.4379,0.1456],[0.2451,0.1486],[0.1709,0.1457],[0.1597,0.1457],[0.1687,0.1163],[0.185,0.1565],[0.1725,0.136],[0.1782,0.1289],[0.2034,0.1364],[0.1989,0.1347],[0.2081,0.13],[0.2428,0.1452],[0.2474,0.1477],[0.2316,0.1434],[0.236,0.1477],[0.2379,0.1436],[0.2224,0.1378],[0.2659,0.1484],[0.2773,0.2115],[0.4739,0.3495],[0.7506,0.6465],[0.9797,0.8789],[0.7433,0.6679],[0.4143,0.3837],[0.2281,0.2095],[0.1554,0.1452],[0.1703,0.1488],[0.1514,0.1586],[0.1396,0.1567],[0.1536,0.1625],[0.1454,0.1685],[0.1665,0.1775],[0.164,0.1606],[0.1468,0.1798],[0.1826,0.166],[0.1811,0.1798],[0.1871,0.1853],[0.1703,0.1985],[0.1576,0.1969],[0.1755,0.2052],[0.187,0.2231],[0.1399,0.2009],[0.1572,0.2644],[0.1352,0.5372],[0.1085,0.7505],[0.13,0.9211],[0.123,0.826],[0.1173,0.5563],[0.1315,0.3404],[0.12,0.2409],[0.1505,0.1941],[0.1504,0.1631],[0.1637,0.1512],[0.1938,0.1475],[0.2188,0.1614],[0.2553,0.1431],[0.2542,0.1674],[0.2539,0.1595],[0.2567,0.199],[0.2666,0.2014],[0.265,0.2251],[0.2657,0.1892],[0.2513,0.1976],[0.2119,0.2209],[0.2724,0.2385],[0.2886,0.2816],[0.3972,0.3735],[0.467,0.4519],[0.4949,0.4819],[0.4473,0.4372],[0.3268,0.3519],[0.2457,0.2831],[0.1917,0.2269],[0.1986,0.205],[0.2658,0.2848],[0.4014,0.4303],[0.8646,0.8082],[0.9685,0.9407],[0.7552,0.7204],[0.4399,0.4338],[0.2751,0.2581],[0.2013,0.2101]],"siteU":[0.035,0.1818,0.3217,0.5804,0.972],"cloud":[[0.3014,0.2359],[0.3309,0.3413],[0.3005,0.3945],[0.1992,0.2055],[0.3361,0.1471],[0.3077,0.3382],[0.2467,0.458],[0.316,0.2379],[0.3026,0.2225],[0.2982,0.3365],[0.2818,0.2479],[0.3139,0.2686],[0.2343,0.2784],[0.2699,0.333],[0.2501,0.2749],[0.3171,0.3172],[0.2825,0.2891],[0.2619,0.2476],[0.2315,0.2802],[0.2641,0.2411],[0.2805,0.3004],[0.2629,0.2303],[0.3602,0.2322],[0.3424,0.3903],[0.1119,0.2967],[0.1629,0.2967],[0.2692,0.3317],[0.2538,0.2739],[0.2932,0.2858],[0.2935,0.3264],[0.4113,0.3175],[0.2111,0.2281],[0.2566,0.3517],[0.4067,0.2634],[0.3201,0.2345],[0.3211,0.2442],[0.2481,0.2758],[0.1778,0.4009],[0.2904,0.2271],[0.2868,0.3099],[0.2039,0.1675],[0.2376,0.2999],[0.2755,0.3558],[0.2214,0.2853],[0.2739,0.261],[0.2859,0.3144],[0.2822,0.3434],[0.2486,0.3411],[0.3168,0.4223],[0.3353,0.313],[0.2999,0.2633],[0.2293,0.2922],[0.3254,0.2955],[0.2489,0.3067],[0.3345,0.2981],[0.2135,0.3108],[0.3367,0.1964],[0.2788,0.3514],[0.2026,0.2644],[0.2605,0.2273],[0.2834,0.3395],[0.2969,0.3817],[0.2191,0.3306],[0.2113,0.31],[0.2924,0.2422],[0.2511,0.478],[0.2946,0.3546],[0.3271,0.2294],[0.1778,0.2517],[0.2958,0.3054],[0.3559,0.2036],[0.2616,0.3105],[0.2297,0.2715],[0.3266,0.376],[0.2957,0.3597],[0.3355,0.1319],[0.2586,0.3026],[0.1881,0.1997],[0.2732,0.3688],[0.2524,0.3104],[0.3281,0.334],[0.292,0.234],[0.1789,0.4134],[0.2059,0.4252],[0.3348,0.234],[0.3221,0.3231],[0.2403,0.2583],[0.2799,0.2985],[0.3076,0.2215],[0.309,0.4158],[0.3343,0.2399],[0.2959,0.2816],[0.2741,0.3311],[0.264,0.2599],[0.3455,0.2852],[0.1404,0.2651],[0.2714,0.2917],[0.282,0.2274],[0.1916,0.2728],[0.3006,0.2872],[0.2396,0.2793],[0.3335,0.3035],[0.2722,0.2818],[0.3215,0.3467],[0.3556,0.28],[0.3037,0.2915],[0.2257,0.2588],[0.1861,0.2674],[0.3887,0.2216],[0.2731,0.3322],[0.2373,0.2292],[0.2889,0.2538],[0.2681,0.3223],[0.3328,0.325],[0.2821,0.2752],[0.2809,0.1748],[0.2357,0.3261],[0.3091,0.3161],[0.751,0.7644],[0.7097,0.7227],[0.716,0.6768],[0.5984,0.7175],[0.8444,0.7105],[0.8064,0.762],[0.7211,0.7663],[0.7849,0.6813],[0.7563,0.6881],[0.7079,0.6891],[0.7967,0.6417],[0.722,0.6857],[0.7209,0.7146],[0.6941,0.7601],[0.7664,0.7966],[0.7342,0.6731],[0.7716,0.752],[0.7048,0.6942],[0.7474,0.8404],[0.6882,0.7172],[0.7888,0.7491],[0.7509,0.6657],[0.7592,0.673],[0.7638,0.7317],[0.6814,0.6977],[0.7854,0.7405],[0.8593,0.6294],[0.645,0.7584],[0.6397,0.6678],[0.6527,0.8199],[0.7888,0.7033],[0.7475,0.7836],[0.8025,0.6391],[0.7819,0.7449],[0.7522,0.6685],[0.7565,0.6918],[0.7302,0.7214],[0.7904,0.7016],[0.6745,0.7353],[0.7155,0.7634],[0.7541,0.7579],[0.8445,0.7149],[0.6957,0.6409],[0.6774,0.6733],[0.7073,0.7086],[0.7962,0.5969],[0.7264,0.7636],[0.8168,0.7061],[0.6314,0.7054],[0.8055,0.775],[0.8,0.7587],[0.6577,0.7328],[0.7489,0.6619],[0.8105,0.738],[0.7451,0.7401],[0.798,0.6687],[0.8777,0.7805],[0.7559,0.7495],[0.7237,0.6058],[0.6953,0.7271],[0.7776,0.6466],[0.7286,0.7859],[0.7296,0.7668],[0.7339,0.656],[0.7777,0.6687],[0.6782,0.7259],[0.6513,0.7061],[0.5988,0.8085],[0.8095,0.763],[0.7443,0.7036],[0.8276,0.7535],[0.7395,0.6021],[0.697,0.738],[0.7677,0.7703],[0.7356,0.7096],[0.6673,0.6788],[0.6887,0.7528],[0.8425,0.8336],[0.7606,0.7319],[0.7642,0.655],[0.724,0.8039],[0.7,0.611],[0.7917,0.7492],[0.7339,0.6862],[0.696,0.774],[0.7322,0.6707],[0.6875,0.7968],[0.751,0.7374],[0.8055,0.6198],[0.6915,0.6055],[0.8229,0.7017],[0.7013,0.7951],[0.7489,0.7274],[0.6915,0.7239],[0.7271,0.7063],[0.7427,0.7628],[0.7148,0.7419],[0.6992,0.7363],[0.7007,0.6629],[0.6924,0.7889],[0.6489,0.7991],[0.7247,0.6445],[0.7633,0.8535],[0.7927,0.7619],[0.7775,0.6917],[0.8825,0.6095],[0.7585,0.7581],[0.7135,0.7523],[0.8486,0.6855],[0.6793,0.6161],[0.7962,0.7852],[0.6846,0.6859],[0.7605,0.6926],[0.6258,0.885],[0.7922,0.8434],[0.7308,0.7753],[0.6839,0.6936],[0.8373,0.7577],[0.3905,0.3001],[0.4248,0.3551],[0.6487,0.5539],[0.6285,0.4524],[0.3444,0.3273],[0.4598,0.404],[0.5338,0.3451],[0.3917,0.3354],[0.6426,0.4896],[0.3552,0.309],[0.5574,0.3832],[0.5827,0.438],[0.5321,0.3487],[0.622,0.4547],[0.65,0.4999],[0.7168,0.599],[0.4789,0.3496],[0.582,0.4718],[0.6165,0.5181],[0.4075,0.3119],[0.3009,0.3325],[0.6537,0.6671],[0.4769,0.3217],[0.5211,0.3088],[0.7056,0.594],[0.6443,0.437]],"cloudLab":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]};
+
+const C = {axis: 'rgba(160,180,255,.22)', grid: 'rgba(160,180,255,.06)', dim: '#7d88b3', ink: '#dfe6ff',
+           blue: '#59a8ff', violet: '#a08cff', site: '#F2A37C', known: '#9FC2F0'};
+const PEACH = '242,163,124', KNOWN_RGB = '159,194,240';
+
+const N = META.frames.length, NP = META.prof1.length;
+const DWELL = .7, STEP = .055, END = 1.8;
+const T0 = []; { let t = 0; for (let i = 0; i < N; i++){ T0.push(t); t += STEP + (META.stops.includes(i) ? DWELL : 0); } }
+const SCAN_T = T0[N - 1] + STEP, CYCLE = SCAN_T + END;
 
 export function initAllosteric(root){
   const cv = root.querySelector('canvas'), ctx = cv.getContext('2d'), btn = root.querySelector('button');
-  let W = 1, H = 1, paused = false, clock = 0;
+  let W = 1, H = 1, paused = false, clock = REDUCED ? SCAN_T - .05 : 0;
   const resize = () => { const dpr = Math.min(devicePixelRatio || 1, 2); W = cv.clientWidth; H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
   new ResizeObserver(resize).observe(cv); resize();
   btn.addEventListener('click', () => { paused = !paused; btn.textContent = paused ? 'Play animation' : 'Pause animation'; btn.setAttribute('aria-pressed', paused); });
+  const font = getComputedStyle(btn).fontFamily || 'ui-monospace, monospace';
 
-  // data
-  const r = rng(11), gauss = () => { let s = 0; for (let i = 0; i < 6; i++) s += r(); return (s - 3) / 1.2; };
-  const conf = Array.from({length: 320}, (_, i) => { const act = i % 5 < 2; return {x: act ? .7 + gauss() * .09 : .3 + gauss() * .1, y: act ? .68 + gauss() * .09 : .32 + gauss() * .1, p: r() * 6.28, act}; });
-  const probes = Array.from({length: 130}, () => ({x: clamp(r() * .95 + .02), y: clamp(Math.pow(r(), 1.4) * .95 + .02), p: r() * 6.28, d: r()}));
-  // the profile: a low baseline plus one peak per site
-  const NRES = 200, b1 = [], b2 = [], SITES = [46, 118, 163], bump = SITES.map(c => Array.from({length: NRES}, (_, i) => Math.exp(-((i - c) ** 2) / 40)));
-  for (let i = 0; i < NRES; i++){
-    b1.push(.18 + .08 * Math.sin(i * .21) + .05 * Math.sin(i * .9));
-    b2.push(.12 + .1 * Math.sin(i * .13 + 1) + .05 * Math.cos(i * .7));
-  }
-  const f1 = b1.map((v, i) => clamp(v + .55 * bump.reduce((t, b) => t + b[i], 0))), f2 = b2.map((v, i) => clamp(v + .45 * bump.reduce((t, b) => t + b[i], 0)));
-  // three discoveries, one per allosteric site. Each is one movement, all in step: while the trajectory travels
-  // from one state to the other, that site's peak rises on the profile and its cluster of probes appears in the
-  // probe panel (two clusters top right, one bottom left); they arrive together
-  const RISE = 20;   // residues over which the pen climbs a peak, and so the length of each hop
-  const CLUSTERS = [[.74, .8], [.2, .24], [.9, .6]].map(([cx, cy]) => Array.from({length: 8}, () => ({x: clamp(cx + gauss() * .045), y: clamp(cy + gauss() * .05), p: r() * 6.28})));
-  let F = 1;   // end-of-cycle fade, applied to everything
+  const img = n => { const im = new Image(); im.src = new URL(`../img/allo/${n}`, import.meta.url).href; return im; };
+  const protein = img('protein.webp'), atlas = img('probes.webp');
+  let pale = null;
+  atlas.addEventListener('load', () => {
+    const c = document.createElement('canvas'); c.width = atlas.naturalWidth; c.height = atlas.naturalHeight;
+    const x = c.getContext('2d'); x.drawImage(atlas, 0, 0);
+    const d = x.getImageData(0, 0, c.width, c.height), p = d.data;
+    for (let i = 0; i < p.length; i += 4){ const l = (p[i] * .35 + p[i + 1] * .5 + p[i + 2] * .15) / 255, v = Math.min(1, .3 + l * .9);
+      p[i] = 104 * v + 30; p[i + 1] = 126 * v + 36; p[i + 2] = 164 * v + 34; }
+    x.putImageData(d, 0, 0); pale = c;
+  });
 
+  const STOPSET = new Set(META.stops);
+  const P1 = META.prof1, P2 = META.prof2, FS = META.fs, CLOUD = META.cloud, LAB = META.cloudLab;
+  const path = s => [.28 + .44 * s + .07 * Math.sin(Math.PI * s), .30 + .40 * s - .10 * Math.sin(Math.PI * s)];
+
+  let F = 1;
   function panel(x, y, w, h){
-    ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
-    for (let k = 1; k < 4; k++){ ctx.beginPath(); ctx.moveTo(x + w * k / 4, y); ctx.lineTo(x + w * k / 4, y + h); ctx.moveTo(x, y + h * k / 4); ctx.lineTo(x + w, y + h * k / 4); ctx.stroke(); }
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 1; ctx.beginPath();
+    for (let k = 1; k < 4; k++){ ctx.moveTo(x + w * k / 4, y); ctx.lineTo(x + w * k / 4, y + h); ctx.moveTo(x, y + h * k / 4); ctx.lineTo(x + w, y + h * k / 4); }
+    ctx.stroke();
     ctx.strokeStyle = C.axis; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + h); ctx.lineTo(x + w, y + h); ctx.stroke();
   }
-  function dot(x, y, rad, col, glow, a = 1){ ctx.globalAlpha = a * F; ctx.shadowColor = col; ctx.shadowBlur = glow; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, rad, 0, 6.283); ctx.fill(); ctx.shadowBlur = 0; ctx.globalAlpha = 1; }
-  function blob(x, y, rad, col, a){ const g = ctx.createRadialGradient(x, y, 0, x, y, rad); g.addColorStop(0, col.replace('A', a)); g.addColorStop(1, col.replace('A', 0)); ctx.fillStyle = g; ctx.fillRect(x - rad, y - rad, rad * 2, rad * 2); }
+  function title(s, x, y, short = s){ ctx.font = `600 9.5px ${font}`; ctx.fillStyle = '#93A0C8'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.letterSpacing = '1px'; const t = ctx.measureText(s.toUpperCase()).width > W - x - 8 ? short : s;
+    ctx.fillText(t.toUpperCase(), x, y); ctx.letterSpacing = '0px'; }
+  function axisLabels(x, y, w, h, lx, ly){ ctx.font = `600 9px ${font}`; ctx.fillStyle = 'rgba(147,160,200,.95)';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'top'; ctx.fillText(lx, x + w, y + h + 4);
+    ctx.save(); ctx.translate(x - 5, y); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText(ly, 0, 0); ctx.restore(); }
+  function dot(x, y, rad, col, glow, a = 1){ if (a <= 0) return; ctx.globalAlpha = a; ctx.shadowColor = col; ctx.shadowBlur = glow; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, rad, 0, 6.283); ctx.fill(); ctx.shadowBlur = 0; ctx.globalAlpha = 1; }
+  function blob(x, y, rad, rgb, a){ if (a <= 0) return; const g = ctx.createRadialGradient(x, y, 0, x, y, rad); g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(1, `rgba(${rgb},0)`); ctx.fillStyle = g; ctx.fillRect(x - rad, y - rad, rad * 2, rad * 2); }
+  function ring(x, y, rad, rgb, a, lw = 1.2){ if (a <= 0) return; ctx.strokeStyle = `rgba(${rgb},${a})`; ctx.lineWidth = lw; ctx.beginPath(); ctx.arc(x, y, rad, 0, 6.283); ctx.stroke(); }
+  function probe(i, box, a, src){
+    const f = META.frames[i]; if (!f || !atlas.complete || !src || a <= 0) return;
+    const [ax, ay, w, h, dx, dy] = f, k = box.w / META.w;
+    ctx.globalAlpha = a; ctx.drawImage(src, ax, ay, w, h, box.x + dx * k, box.y + dy * k, w * k / 2, h * k / 2); ctx.globalAlpha = 1;
+  }
 
   animate(root, dt => {
     if (!paused) clock += dt;
-    const t = clock, c = (t % CYCLE) / CYCLE;
-    F = 1 - clamp((c - .92) / .06);
-    // the profile is drawn left to right; as the pen climbs each site's peak, the trajectory travels to the other
-    // state and that site's probe cluster appears, all arriving together on the peak's top
-    const head = clamp((c - .06) / .8) * (NRES - 1);
-    const pop = SITES.map(s => ease(clamp((head - (s - RISE)) / RISE))), flash = SITES.map(s => { const u = (head - s) / 14; return u > 0 && u < 1 ? Math.sin(Math.PI * u) : 0; });
+    const t = clock % CYCLE;
+    F = 1 - ease(clamp((t - SCAN_T - .45) / (END - .65)));
+    const inScan = t < SCAN_T;
+    let k = N - 1; while (k > 0 && T0[k] > t) k--;
+    const si = META.stops.indexOf(k);
+    const dwellT = si >= 0 ? clamp((t - T0[k]) / DWELL) : -1;
+    const flash = si >= 0 && inScan ? Math.sin(Math.PI * clamp(dwellT * 1.1)) : 0;
+    const arrive = si >= 0 && inScan ? ease(clamp(dwellT * 3.5)) : 0;
+    const found = META.stops.map((s, j) => (!inScan || k > s) ? 1 : (k === s ? arrive : 0));
+    const idx = inScan ? Math.min(k, N - 1) : N - 1;
+    const u = inScan ? idx / (N - 1) : 1;
+
     ctx.clearRect(0, 0, W, H);
-    const narrow = W < 520, pad = narrow ? 24 : 32, gap = 32, top = narrow ? 56 : 32;   // room for the pause button (top right on phones, bottom right otherwise)
-    const pw = narrow ? W - pad * 2 : (W - pad * 2 - gap) / 2, ph = narrow ? H * .2 : H * .36;
+    const narrow = W < 520, pad = narrow ? 22 : 26, top = narrow ? 58 : 34;
+    let PB, A, B, P;
+    if (!narrow){
+      const th = H * .55, pw = th * META.w / META.h, gap = 18;
+      PB = {x: (W - pw) / 2, y: top - 6, w: pw, h: th};
+      const side = Math.min((W - pad * 2 - pw - gap * 2) / 2 - 12, th - 40);
+      A = {x: pad + 12, y: top + (th - side) / 2 + 4, w: side, h: side};
+      B = {x: W - pad - side, y: A.y, w: side, h: side};
+      P = {x: pad + 12, y: top + th + 30, w: W - pad * 2 - 12, h: H - (top + th + 30) - 58};
+    } else {
+      const th = H * .5, pw = th * META.w / META.h, gap = 14;
+      PB = {x: pad - 4, y: top - 8, w: pw, h: th};
+      const side = Math.min(W - pad - (PB.x + pw + gap) - 10, th / 2 - 30);
+      A = {x: W - pad - side, y: top + 16, w: side, h: side};
+      B = {x: A.x, y: A.y + side + 40, w: side, h: side};
+      P = {x: pad + 12, y: top + th + 28, w: W - pad * 2 - 12, h: H - (top + th + 28) - 44};
+    }
 
-    // A: conformational landscape
-    const ax = pad, ay = top;
-    panel(ax, ay, pw, ph);
-    ctx.globalAlpha = F;
-    blob(ax + pw * .3, ay + ph * .68, pw * .32, 'rgba(89,168,255,A)', .16);
-    blob(ax + pw * .7, ay + ph * .32, pw * .3, 'rgba(160,140,255,A)', .16);
-    ctx.globalAlpha = 1;
-    const reveal = ease(clamp(c * 5));
-    conf.forEach((q, i) => { if (i / conf.length > reveal) return; const x = ax + (q.x + .01 * Math.sin(t * .8 + q.p)) * pw, y = ay + (1 - q.y + .01 * Math.cos(t * .7 + q.p)) * ph; dot(x, y, 1.4, q.act ? C.violet : C.blue, 4, .75); });
-    // the trajectory rests in one state and hops to the other, arriving exactly at each discovery
-    const state = pop.reduce((s, k) => s + k, 0);
-    const side = state % 2 <= 1 ? state % 2 : 2 - state % 2;   // 0 inactive … 1 active, back and forth
-    const tx = ax + (.3 + .4 * side + .03 * Math.sin(t * 2.3)) * pw, ty = ay + (1 - (.32 + .36 * side + .03 * Math.cos(t * 1.9))) * ph;
-    dot(tx, ty, 4 + 3 * Math.max(...flash), C.site, 16 + 14 * Math.max(...flash));
+    // ---- receptor ----
+    if (protein.complete){
+      ctx.drawImage(protein, PB.x, PB.y, PB.w, PB.h);
+      const ks = PB.w / META.w;
+      const foundOf = id => { const j = META.marks.findIndex(m => m.id === id); return j < 0 ? 0 : found[j]; };
+      META.known.forEach(kk => {
+        const x = PB.x + kk.x * ks, y = PB.y + kk.y * ks, fo = foundOf(kk.id);
+        // the ring stays once the probe has been there: an outer cool ring round a warm centre is a
+        // documented site the sweep recovered, a warm mark on its own is one it added
+        if (kk.buried > .4){ blob(x, y, 17 + 5 * kk.buried, KNOWN_RGB, .42 * (1 - .5 * fo) * (1 - .25 * kk.buried)); ring(x, y, 11.5, KNOWN_RGB, .42 + .3 * fo, 1.1); }
+        else { blob(x, y, 13, KNOWN_RGB, .20 * (1 - .4 * fo)); ring(x, y, fo > .2 ? 12 : 7, KNOWN_RGB, .92, 1.5); dot(x, y, 1.8, C.known, 6, .95 * (1 - fo)); }
+      });
+      // a site the probe has settled on warms up in place
+      META.marks.forEach((m, j) => { if (found[j] <= 0) return;
+        const x = PB.x + m.x * ks, y = PB.y + m.y * ks, fl = (si === j ? flash : 0);
+        blob(x, y, 20 + 10 * fl, PEACH, .36 * found[j] * F);
+        if (si === j && inScan) ring(x, y, 8 + 24 * clamp(dwellT * 1.5), PEACH, .7 * (1 - clamp(dwellT * 1.5)), 1.4);
+        ring(x, y, 7.5, PEACH, .9 * found[j] * F, 1.6);
+        dot(x, y, 2 + 1.5 * fl, C.site, 10, found[j] * F);
+      });
+      if (inScan){
+        const warm = si >= 0 ? arrive : 0;
+        if (warm < 1) probe(idx, PB, (1 - warm) * clamp(t / .3), pale);
+        if (warm > 0) probe(idx, PB, warm, atlas);
+      }
+    }
 
-    // B: probe density vs proximity
-    const bx = narrow ? pad : pad + pw + gap, by = narrow ? top + ph + 32 : top;
-    panel(bx, by, pw, ph);
-    const reveal2 = ease(clamp(c * 5 - .3));
-    probes.forEach((q, i) => { if (i / probes.length > reveal2) return; dot(bx + q.x * pw, by + (1 - q.y) * ph, 1.8, C.blue, 5, .5 + .3 * q.d); });
-    CLUSTERS.forEach((cl, k) => {
-      if (pop[k] <= 0) return;
-      const mx = cl.reduce((s, q) => s + q.x, 0) / cl.length, my = cl.reduce((s, q) => s + q.y, 0) / cl.length;
-      ctx.globalAlpha = F; blob(bx + mx * pw, by + (1 - my) * ph, pw * .14 * (1 + .4 * flash[k]), 'rgba(255,122,58,A)', .22 * pop[k]); ctx.globalAlpha = 1;
-      cl.forEach(q => dot(bx + q.x * pw, by + (1 - q.y) * ph, (2.6 + .6 * Math.sin(t * 3 + q.p)) * (.4 + .6 * pop[k]) + 2 * flash[k], C.site, 14, .95 * pop[k]));
-    });
+    // ---- landscape: two populations, the ensemble moving between them ----
+    title('Conformational landscape', A.x - 12, A.y - 12, 'Conformations');
+    panel(A.x, A.y, A.w, A.h);
+    axisLabels(A.x, A.y, A.w, A.h, 'PC1', 'PC2');
+    blob(A.x + A.w * .28, A.y + A.h * .70, A.w * .30, '89,168,255', .13);
+    blob(A.x + A.w * .72, A.y + A.h * .28, A.w * .28, '160,140,255', .13);
+    CLOUD.forEach((q, i) => dot(A.x + q[0] * A.w, A.y + (1 - q[1]) * A.h, 1.15,
+                                LAB[i] === 0 ? C.blue : LAB[i] === 1 ? C.violet : C.dim, 3, LAB[i] === 2 ? .4 : .6));
+    { // one step along the path per site found
+      const prog = (found.reduce((s, v) => s + v, 0)) / META.marks.length;
+      const walk = s => { const p = path(s); return [A.x + p[0] * A.w, A.y + (1 - p[1]) * A.h]; };
+      ctx.globalAlpha = .6 * F; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.1; ctx.setLineDash([2, 3]); ctx.beginPath();
+      for (let s = 0; s <= prog + 1e-6; s += .02){ const [x, y] = walk(Math.min(s, prog)); s ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      META.marks.forEach((m, j) => { if (found[j] <= 0) return; const [x, y] = walk((j + 1) / META.marks.length);
+        ring(x, y, 4.5 + 2 * (si === j ? flash : 0), PEACH, .9 * F * found[j], 1.4); });
+      const [x, y] = walk(prog);
+      blob(x, y, 11, si >= 0 && inScan ? PEACH : '223,230,255', .22 * F);
+      dot(x, y, 3, si >= 0 && inScan ? C.site : C.ink, 10, .95);
+    }
 
-    // C: allosteric profile
-    const cx = pad, cy = by + ph + 32, cw = W - pad * 2, ch = H - cy - (narrow ? 32 : 64);
-    panel(cx, cy, cw, ch);
-    const n = Math.floor(head) + 1;
-    for (const [arr, col, dash] of [[f1, C.blue, []], [f2, C.violet, [5, 4]]]){
-      ctx.globalAlpha = F; ctx.setLineDash(dash); ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.shadowColor = col; ctx.shadowBlur = 8; ctx.beginPath();
-      for (let i = 0; i < n; i++){ const x = cx + i / (NRES - 1) * cw, y = cy + (1 - arr[i]) * ch; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    // ---- feature space ----
+    title('Feature space', B.x - 12, B.y - 12);
+    ctx.fillStyle = 'rgba(242,163,124,.055)'; ctx.fillRect(B.x + B.w * .6, B.y, B.w * .4, B.h * .4);
+    panel(B.x, B.y, B.w, B.h);
+    ctx.strokeStyle = 'rgba(160,180,255,.14)'; ctx.setLineDash([3, 4]); ctx.beginPath();
+    ctx.moveTo(B.x + B.w * .6, B.y); ctx.lineTo(B.x + B.w * .6, B.y + B.h);
+    ctx.moveTo(B.x, B.y + B.h * .4); ctx.lineTo(B.x + B.w, B.y + B.h * .4); ctx.stroke(); ctx.setLineDash([]);
+    axisLabels(B.x, B.y, B.w, B.h, 'Feature 1', 'Feature 2');
+    const nPts = inScan ? idx + 1 : FS.length;
+    for (let i = 0; i < nPts; i++){
+      if (STOPSET.has(i)) continue;
+      const q = FS[i], x = B.x + q[0] * B.w, y = B.y + (1 - q[1]) * B.h;
+      const fresh = i > nPts - 3;
+      dot(x, y, fresh ? 2.4 : 1.5, fresh ? C.ink : C.blue, fresh ? 9 : 3, (fresh ? .95 : .5) * F);
+    }
+    META.stops.forEach((s, j) => { if (found[j] <= 0) return;
+      const q = FS[s], x = B.x + q[0] * B.w, y = B.y + (1 - q[1]) * B.h, fl = (si === j ? flash : 0);
+      blob(x, y, 16 + 8 * fl, PEACH, .32 * found[j] * F);
+      dot(x, y, 2.8 + 2 * fl, C.site, 14, found[j] * F); });
+
+    // ---- profile ----
+    title('Allosteric profile', P.x - 12, P.y - 12);
+    panel(P.x, P.y, P.w, P.h);
+    const xOf = v => P.x + v * P.w, yOf = v => P.y + (1 - v) * P.h;
+    META.siteU.forEach((us, j) => { if (found[j] <= 0) return;
+      const g = ctx.createLinearGradient(0, P.y, 0, P.y + P.h);
+      g.addColorStop(0, `rgba(${PEACH},${(.16 + .16 * (si === j ? flash : 0)) * found[j] * F})`); g.addColorStop(1, `rgba(${PEACH},0)`);
+      ctx.fillStyle = g; ctx.fillRect(xOf(us) - 6, P.y, 12, P.h); });
+    const nP = Math.max(2, Math.round(u * (NP - 1)) + 1);
+    for (const [arr, col, dash, w] of [[P1, C.blue, [], 1.5], [P2, C.violet, [5, 4], 1.4]]){
+      ctx.globalAlpha = F; ctx.setLineDash(dash); ctx.strokeStyle = col; ctx.lineWidth = w; ctx.shadowColor = col; ctx.shadowBlur = 6; ctx.beginPath();
+      for (let i = 0; i < nP; i++){ const x = xOf(i / (NP - 1)), y = yOf(arr[i] * .88); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
       ctx.stroke(); ctx.shadowBlur = 0; ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
-    // the pen's tip, while it draws
-    if (head > 0 && head < NRES - 1){ const i = Math.floor(head); dot(cx + i / (NRES - 1) * cw, cy + (1 - f1[i]) * ch, 2.6, C.ink, 12, .9); }
-    // each site's marker rides the pen up its peak and stays on the top
-    SITES.forEach((s, k) => { if (pop[k] <= 0) return; const i = Math.min(Math.floor(head), s), x = cx + i / (NRES - 1) * cw, y = cy + (1 - f1[i]) * ch;
-      const g = ctx.createLinearGradient(0, cy, 0, cy + ch); g.addColorStop(0, `rgba(255,122,58,${.18 * pop[k] + .15 * flash[k]})`); g.addColorStop(1, 'rgba(255,122,58,0)');
-      ctx.globalAlpha = F; ctx.fillStyle = g; ctx.fillRect(x - 6, cy, 12, ch); ctx.globalAlpha = 1;
-      dot(x, y - 8, (4 + Math.sin(t * 3 + s)) * (.4 + .6 * pop[k]) + 3 * flash[k], C.site, 18 + 14 * flash[k], pop[k]); });
+    // the documented sites, on the profile as well: a cool ring that gains a warm centre when taken
+    (META.knownU || []).forEach(kk => {
+      if (u < kk.u - .004) return;
+      const i = Math.round(kk.u * (NP - 1)), yv = yOf(Math.max(P1[i], P2[i]) * .88) - 8;
+      const j = META.marks.findIndex(m => m.id === kk.id), fo = j < 0 ? 0 : found[j];
+      ring(xOf(kk.u), yv, 5.5, KNOWN_RGB, (.5 + .35 * fo) * F, 1.3);
+      if (fo > 0) dot(xOf(kk.u), yv, 2.2, C.site, 9, fo * F);
+    });
+    if (inScan) dot(xOf(u), yOf(P1[Math.min(nP - 1, NP - 1)] * .88), 2.4, C.ink, 10, .9);
+    META.siteU.forEach((us, j) => { if (found[j] <= 0 || META.marks[j].known) return;
+      const i = Math.round(us * (NP - 1));
+      dot(xOf(us), yOf(Math.max(P1[i], P2[i]) * .88) - 8, (3.2 + 2.5 * (si === j ? flash : 0)) * (.5 + .5 * found[j]), C.site, 16, found[j] * F); });
+
+    const ly = narrow ? H - 18 : H - 26; let lx = P.x - 12;
+    ctx.font = `500 9px ${font}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    const swatch = (col, dash, label) => { ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 14, ly); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = '#93A0C8'; ctx.fillText(label, lx + 19, ly); lx += 19 + ctx.measureText(label).width + 14; };
+    swatch(C.blue, [], 'Feature 1'); swatch(C.violet, [3, 3], 'Feature 2');
+    ring(lx + 4, ly, 4, KNOWN_RGB, .85, 1.2); ctx.fillStyle = '#93A0C8'; ctx.fillText('Known site', lx + 12, ly);
+    lx += 12 + ctx.measureText('Known site').width + 14;
+    dot(lx + 3, ly, 2.6, C.site, 6); ctx.fillStyle = '#93A0C8'; ctx.fillText('Site found', lx + 11, ly);
   });
 }
