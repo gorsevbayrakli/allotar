@@ -210,13 +210,19 @@ if (form){
 }
 
 // ---------- WebGL scenes start when they approach the viewport ----------
+// a scene's module is fetched when it nears the screen; if the fetch fails (flaky connection), try again a few times
+// with a fresh URL instead of leaving the card empty
+const load = (name, n = 0) => import(`./${name}.js${n ? `?retry=${n}` : ''}`).catch(err => {
+  if (n >= 4) throw err;
+  return new Promise(r => setTimeout(r, 800 * (n + 1))).then(() => load(name, n + 1));
+});
 const scenes = {
-  hero: el => import('./hero.js').then(m => m.initHero(el, {mode: el.dataset.mode || 'protein', light: el.closest('[data-theme]')?.dataset.theme !== 'navy'})),
-  story: el => import('./story.js').then(m => m.initStory(el)),
-  engine: el => import('./engine.js').then(m => m.initEngine(el)),
-  selmap: el => import('./selmap.js').then(m => m.initSelmap(el)),
-  dynamics: el => import('./dynamics.js').then(m => m.initDynamics(el)),
-  allo: el => import('./allosteric.js').then(m => m.initAllosteric(el)),
+  hero: el => load('hero').then(m => m.initHero(el, {mode: el.dataset.mode || 'protein', light: el.closest('[data-theme]')?.dataset.theme !== 'navy'})),
+  story: el => load('story').then(m => m.initStory(el)),
+  engine: el => load('engine').then(m => m.initEngine(el)),
+  selmap: el => load('selmap').then(m => m.initSelmap(el)),
+  dynamics: el => load('dynamics').then(m => m.initDynamics(el)),
+  allo: el => load('allosteric').then(m => m.initAllosteric(el)),
 };
 const glo = new IntersectionObserver(entries => entries.forEach(e => {
   if (!e.isIntersecting) return; glo.unobserve(e.target);

@@ -19,7 +19,9 @@ export function initStory(canvas){
   const section = canvas.closest('[data-story]');
   const L = canvas2d(canvas);
   const size = Math.min(innerWidth, innerHeight * .8) < 700 ? 's' : 'l';
-  const load = f => { const im = new Image(); im.decoding = 'async'; im.src = new URL(`../img/protein/morph-surface/${size}/${f}.webp`, import.meta.url).href; return im; };
+  const load = f => { const im = new Image(), src = new URL(`../img/protein/morph-surface/${size}/${f}.webp`, import.meta.url).href; let n = 0;
+    im.decoding = 'async'; im.onerror = () => { if (++n <= 3) setTimeout(() => { im.src = `${src}?retry=${n}`; }, 700 * n); };   // flaky connection: try again
+    im.src = src; return im; };
   // the two end frames first, so the panels have their shapes before the in-between frames arrive
   const frames = Array(NF), lit = load('lit');
   frames[0] = load('000'); frames[NF - 1] = load(String(NF - 1).padStart(3, '0'));

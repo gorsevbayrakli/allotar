@@ -55,7 +55,9 @@ function buildSamples(){
 function filmLayer(canvas){
   const video = Object.assign(document.createElement('video'), {muted: true, loop: true, playsInline: true, preload: 'auto', crossOrigin: 'anonymous'});
   video.setAttribute('muted', ''); video.setAttribute('playsinline', '');
-  video.src = new URL('../video/dynamics-o2c.mp4', import.meta.url).href;
+  const src = new URL('../video/dynamics-o2c.mp4', import.meta.url).href; let tries = 0;
+  video.addEventListener('error', () => { if (++tries <= 3) setTimeout(() => { video.src = `${src}?retry=${tries}`; video.load(); video.play().catch(() => {}); }, 800 * tries); });   // flaky connection: try again
+  video.src = src;
   const renderer = new THREE.WebGLRenderer({canvas, alpha: true, antialias: false, premultipliedAlpha: true});
   renderer.setClearColor(0x000000, 0);
   const tex = new THREE.VideoTexture(video); tex.colorSpace = THREE.NoColorSpace; tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
