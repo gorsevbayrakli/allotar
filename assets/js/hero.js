@@ -189,8 +189,10 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
         lights.push(x, surfY(x, z, t) + .08, z, L.back ? C_BACK : C_FWD, (.85 * k + .5 * flash) * dim * out, L.s * (.4 + .6 * k + .5 * flash) * (.75 + .25 * dim));
       }
     }
-    const out = fr === null ? 1 - prog(u, FADE_AT, LOOP - FADE_AT - .3) : 0;
-    for (const L of fr === null ? SAMPLES : []){
+    // the protein hero waits for its film, so its lights start once, in step with it, instead of running a loop of
+    // their own first and restarting when the film arrives
+    const own = !seq, out = own ? 1 - prog(u, FADE_AT, LOOP - FADE_AT - .3) : 0;
+    for (const L of own ? SAMPLES : []){
       if (u < L.t) continue;
       const k = ease(prog(u, L.t, .6)), flash = Math.sin(Math.PI * prog(u, L.t, .6)), x = L.x + .03 * Math.sin(t * 2.3 + L.ph), z = L.z + .03 * Math.cos(t * 2 + L.ph);
       lights.push(x, surfY(x, z, t) + .08, z, L.back ? C_BACK : C_FWD, (.85 * k + .5 * flash) * out, L.s * (.4 + .6 * k + .5 * flash));
