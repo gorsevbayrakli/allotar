@@ -210,14 +210,31 @@ if (slides){
   show(0); run();
 }
 
-// ---------- contact form: visual only for now, nothing is sent ----------
+// ---------- contact form: reCAPTCHA v3, then /api/contact sends it to contact@allotar.com ----------
+// The reCAPTCHA site key lives in <meta name="recaptcha-key">; while it is empty the form says it is not active yet.
 const form = $('form[name=contact]');
 if (form){
-  const msg = $('.form-msg', form);
-  form.addEventListener('submit', e => {
+  const msg = $('.form-msg', form), btn = $('button[type=submit]', form), KEY = $('meta[name=recaptcha-key]')?.content || '';
+  const say = (html, col) => { msg.innerHTML = html; msg.style.color = col; };
+  const FALLBACK = 'Please write to <a href="mailto:contact@allotar.com" style="color:var(--ink)">contact@allotar.com</a>.';
+  let rc = null;
+  const loadRc = () => rc || (rc = new Promise((ok, no) => { const s = document.createElement('script'); s.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(KEY)}`; s.onload = () => grecaptcha.ready(ok); s.onerror = no; document.head.appendChild(s); }));
+  if (KEY) form.addEventListener('focusin', () => loadRc().catch(() => {}), {once: true});   // load the script only when someone starts the form
+  form.addEventListener('submit', async e => {
     e.preventDefault();
-    msg.innerHTML = 'The form is not active yet. Please write to <a href="mailto:contact@allotar.com" style="color:var(--ink)">contact@allotar.com</a>.';
-    msg.style.color = 'var(--soft)';
+    if (!KEY){ say(`The form is not active yet. ${FALLBACK}`, 'var(--soft)'); return; }
+    const d = Object.fromEntries(new FormData(form));
+    btn.disabled = true; say('Sending…', 'var(--soft)');
+    try {
+      await loadRc();
+      const token = await grecaptcha.execute(KEY, {action: 'contact'});
+      const r = await fetch('/api/contact', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+        first: d['first-name'], last: d['last-name'], email: d.email, organization: d.organization, interest: d.interest, message: d.message, 'bot-field': d['bot-field'], token})});
+      if (!r.ok) throw new Error(r.status);
+      form.reset(); say('Thank you. Your message has been sent and we will be in touch soon.', 'var(--ink)');
+    } catch {
+      say(`Sorry, the message could not be sent. ${FALLBACK}`, 'var(--soft)');
+    } finally { btn.disabled = false; }
   });
 }
 
