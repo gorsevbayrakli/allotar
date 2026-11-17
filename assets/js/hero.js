@@ -15,7 +15,7 @@ const BASE_Y = -2.6, AMP = .75;
 // wells: x, z, depth, radius
 const W1 = [-2.4, -7.2, 2.4, 2.1], W2 = [5.6, -8.6, 2.0, 2.0];
 // small local minima between the two big wells: forward route (F) and return route (R)
-const F1 = [-.5, -6.3, .65, .7], F2 = [1.5, -6, .95, 1.1], F3 = [3.7, -6.8, .65, .7];
+const F1 = [-.5, -6.3, .65, .7], F2 = [1.5, -6, 1.6, 1.45], F3 = [3.7, -6.8, .65, .7];   // F2: the middle well of the protein hero
 const R1 = [3.6, -11.5, .75, .8], R2 = [-.4, -11.2, .75, .8];
 const WELLS = [W1, W2, F1, F2, F3, R1, R2, [11, -3, .7, 2], [-10, -4, .8, 2.4], [-8.5, -15.5, 1, 3], [12.5, -15, .9, 2.6], [2, -17.5, .6, 2.6]];
 function energy(x, z, t){
@@ -82,6 +82,25 @@ function filmCycle(c){
   return {f: ph * BF, u};
 }
 // every sample: where it appears, when, and whether it belongs to the forward or the backward transition
+// protein hero: lights choreographed to the film, in cycle time τ (0–1). While the protein rests open they gather
+// mostly in the left well; as its lobes close and touch they move to the middle well, arriving as the lobes meet; during
+// the twist they pass on to the third well; as it opens they return (blue). A well the population has left dims.
+function buildFilmSamples(){
+  const r = rng(23), S = [], h = HOLD / CYCLE, cE = h + CLOSED * (1 - h), tE = h + OPENS * (1 - h);
+  const well = (w, n, t0, t1, rad, dim, back = false) => { for (let i = 0; i < n; i++){ const a = r() * 6.283, d = Math.sqrt(r()) * w[3] * rad;
+    S.push({x: w[0] + Math.cos(a) * d, z: w[1] + Math.sin(a) * d, t: t0 + (t1 - t0) * (i + r() * .6) / n, dim, back}); } };
+  const path = (c, n, t0, t1, dim, back = false) => { for (let i = 0; i < n; i++){ const s = clamp((i + .5 + (r() - .5) * 1.2) / n), p = c.getPoint(s), q = c.getTangent(s), o = (r() + r() + r() - 1.5) * .6;
+    S.push({x: p.x - q.z * o, z: p.z + q.x * o, t: t0 + (t1 - t0) * clamp(s + (r() - .5) * .2), dim, back}); } };
+  const toMid = route(W1, [-.6, -6.9], F2), toThird = route(F2, [3.7, -7.2], W2);
+  well(W1, 34, .08 * h, .95 * h, .55, h + .55 * (cE - h));          // open: the left well fills
+  path(toMid, 9, h + .1 * (cE - h), cE, cE + .3 * (tE - cE));          // closing: across to the middle
+  well(F2, 18, h + .55 * (cE - h), cE, .55, cE + .45 * (tE - cE));     // the lobes touch: the middle well is full
+  path(toThird, 9, cE + .05 * (tE - cE), cE + .6 * (tE - cE), tE);     // twist: on to the third well
+  well(W2, 24, cE + .4 * (tE - cE), tE, .5, 2);
+  for (const [c, a, b] of [[BACK[0], 0, .34], [BACK[1], .34, .67], [BACK[2], .67, .96]]) path(c, 5, tE + a * (1 - tE), tE + b * (1 - tE), 2, true);   // opening: back home
+  S.forEach(p => { p.ph = r() * 6.283; p.s = .1 + r() * .07; });
+  return S;
+}
 function buildSamples(K = 1){   // K thins every group (the protein hero, where the lights keep pace with the film, uses fewer)
   const r = rng(21), S = [];
   const well = (w, n0, t0, t1, k, back = false) => { const n = Math.max(3, Math.round(n0 * K)); for (let i = 0; i < n; i++){ const a = r() * 6.283, d = Math.sqrt(r()) * w[3] * k;
@@ -120,7 +139,8 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
   const land = makeLandscape(light); scene.add(land);
 
   // lights
-  const SAMPLES = buildSamples(mode === 'protein' ? .6 : 1), lights = makePoints(SAMPLES.length, S.glow); scene.add(lights.points);
+  const SAMPLES = buildSamples(mode === 'protein' ? .6 : 1), FSAMPLES = mode === 'protein' ? buildFilmSamples() : [];
+  const lights = makePoints(Math.max(SAMPLES.length, FSAMPLES.length), S.glow); scene.add(lights.points);
   const C_FWD = light ? rgb('#e9783f') : hdr('#ffd38a', 2.6), C_BACK = light ? rgb('#3d6fd6') : hdr('#6fb4ff', 2.8);
 
   // dust
@@ -158,9 +178,19 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
     lights.n = 0;
     // with the protein film loaded, its clock drives the lights; until then (and on pages without it) they run on their own
     let u = t % LOOP, fr = null;
-    if (seq && seq.all){ if (seq.t0 === undefined) seq.t0 = t; const fc = filmCycle((t - seq.t0) % CYCLE); u = fc.u; fr = fc.f; }
-    const out = 1 - prog(u, FADE_AT, LOOP - FADE_AT - .3);
-    for (const L of SAMPLES){
+    if (seq && seq.all){
+      if (seq.t0 === undefined) seq.t0 = t;
+      const c = (t - seq.t0) % CYCLE, tau = c / CYCLE; fr = filmCycle(c).f;
+      const out = 1 - prog(tau, .965, .033);   // the lights clear just before the next rest
+      for (const L of FSAMPLES){
+        if (tau < L.t) continue;
+        const k = ease(prog(tau, L.t, .04)), flash = Math.sin(Math.PI * prog(tau, L.t, .04)), dim = 1 - .7 * ease(prog(tau, L.dim, .07));
+        const x = L.x + .03 * Math.sin(t * 2.3 + L.ph), z = L.z + .03 * Math.cos(t * 2 + L.ph);
+        lights.push(x, surfY(x, z, t) + .08, z, L.back ? C_BACK : C_FWD, (.85 * k + .5 * flash) * dim * out, L.s * (.4 + .6 * k + .5 * flash) * (.75 + .25 * dim));
+      }
+    }
+    const out = fr === null ? 1 - prog(u, FADE_AT, LOOP - FADE_AT - .3) : 0;
+    for (const L of fr === null ? SAMPLES : []){
       if (u < L.t) continue;
       const k = ease(prog(u, L.t, .6)), flash = Math.sin(Math.PI * prog(u, L.t, .6)), x = L.x + .03 * Math.sin(t * 2.3 + L.ph), z = L.z + .03 * Math.cos(t * 2 + L.ph);
       lights.push(x, surfY(x, z, t) + .08, z, L.back ? C_BACK : C_FWD, (.85 * k + .5 * flash) * out, L.s * (.4 + .6 * k + .5 * flash));
@@ -177,7 +207,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
       let cx, cy, bh;
       if (phone){ const top = 88, bot = h1.getBoundingClientRect().top - canvas.getBoundingClientRect().top - 16; bh = Math.max(120, bot - top); cy = (top + bot) / 2; cx = W / 2; }
       else if (narrow2){ bh = H * .44; cx = W / 2; cy = 88 + bh / 2; }
-      else { bh = Math.min(H * .5, W * .34); cx = W * .76; cy = H * .5; }
+      else { bh = Math.min(H * .46, W * .32); cx = W * .76; cy = H * .42; }   // sits above the wells, so the middle one stays visible under it
       const intro = ease(prog(t, .2, 1.6)), sc = (.94 + .06 * intro) * bh * (1 + .012 * Math.sin(t * .4)), bw = sc * seq.ratio;
       // slow float; sub-pixel positions keep the glide smooth
       const x0 = cx - bw / 2 + mx * 14, y0 = cy - sc / 2 - p * H * .22 + my * 8 + 6 * Math.sin(t * .55);
