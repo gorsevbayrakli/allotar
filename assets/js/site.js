@@ -20,44 +20,17 @@ if (loader){
   }
 }
 
-// ---------- section themes: each section paints its own colour behind it; the nav follows the section mid-screen ----------
+// ---------- section themes: the page background follows the section in the middle of the screen ----------
 const themed = $$('[data-theme]');
 const orbs = document.createElement('div'); orbs.className = 'orbs'; orbs.setAttribute('aria-hidden', 'true'); orbs.innerHTML = '<i></i><i></i><i></i>';
 document.body.prepend(orbs);
 const orbEls = $$('i', orbs), ORB = [[.9, -.06, 40], [-.7, .05, 52], [.6, -.1, 46]];
 let tone = '';
-// each section's colour sits behind that section itself and scrolls with it (a short feather at each change), so
-// text near a boundary is always on its own background; the tone above only drives the nav and the orbs
-const pageBg = document.createElement('div'); pageBg.className = 'pagebg'; pageBg.setAttribute('aria-hidden', 'true'); document.body.prepend(pageBg);
-const COL = {light: '#ffffff', mist: '#eef0f8', navy: '#0a1030'}, FEATHER = 48;
-let lastBg = '';
-function paintBg(){
-  const H = innerHeight, bands = [];
-  for (const sec of themed){
-    // a section that overlaps the one before it (negative margin) takes over from its own top, as it is drawn on top
-    const r = sec.getBoundingClientRect(), last = bands[bands.length - 1];
-    if (last && r.top < last[1]) last[1] = r.top;
-    bands.push([r.top, r.bottom, COL[sec.dataset.theme] || COL.light]);
-  }
-  const stops = []; let prev = null;
-  for (const [a, b, c] of bands){
-    if (a > H + FEATHER) break;
-    if (b < -FEATHER || b <= a){ if (b > a) prev = c; continue; }
-    if (prev && prev !== c){ stops.push(`${prev} ${Math.round(a - FEATHER)}px`, `${c} ${Math.round(a + FEATHER)}px`); }
-    else if (!stops.length) stops.push(`${c} 0px`);
-    prev = c;
-  }
-  if (!stops.length) stops.push(`${COL.light} 0px`);
-  stops.push(`${prev || COL.light} ${H}px`);
-  const bg = `linear-gradient(to bottom, ${stops.join(', ')})`;
-  if (bg !== lastBg){ lastBg = bg; pageBg.style.background = bg; }
-}
 function onScrollFx(){
   const y = scrollY, mid = innerHeight * .55;
   let t = 'light';
   for (const s of themed){ const r = s.getBoundingClientRect(); if (r.top <= mid && r.bottom > mid){ t = s.dataset.theme; break; } }
   if (t !== tone){ tone = t; document.documentElement.dataset.tone = t; }
-  paintBg();
   // orbs drift slowly on their own and move at different speeds with the scroll
   const now = performance.now() / 1000;
   orbEls.forEach((o, i) => { const [sx, sy, a] = ORB[i]; o.style.transform = `translate3d(${Math.sin(now * .07 + i * 2) * a + sx * (y % 2400) * .02}px, ${Math.cos(now * .05 + i) * a + sy * y}px, 0)`; });
@@ -89,6 +62,45 @@ if (window.Lenis && !REDUCED){
   lenis = new Lenis({lerp: .14, smoothWheel: true});   // light smoothing: the page follows the wheel closely instead of gliding behind it
   const raf = t => { lenis.raf(t); requestAnimationFrame(raf); }; requestAnimationFrame(raf);
 }
+// ---------- home, desktop mouse: one wheel step = one screen ----------
+// The page moves between fixed stops: the hero, the statement, each story panel, then each block below (each approach
+// row on its own). A wheel step (or one trackpad swipe) glides to the next stop; further wheel events are swallowed
+// until the glide has finished and the wheel has been still for a moment, so one gesture never skips two screens.
+if (document.body.dataset.page === 'home' && matchMedia('(hover: hover) and (pointer: fine)').matches){
+  const H = () => innerHeight, maxY = () => document.documentElement.scrollHeight - innerHeight;
+  const top = el => el.getBoundingClientRect().top + scrollY;
+  const centre = el => top(el) + el.offsetHeight / 2 - H() / 2;
+  function stops(){
+    const s = [0];
+    const st = $('.statement'); if (st && st.offsetHeight > H()) s.push(top(st) + .65 * (st.offsetHeight - H()));
+    const story = $('[data-story]');
+    if (story){ const n = $$('.panel', story).length || 4, run = story.offsetHeight - H(); for (let i = 0; i < n; i++) s.push(top(story) + (i + .5) / n * run); }
+    const after = story ? top(story) + story.offsetHeight - H() : 0;
+    for (const sec of $$('main > section, footer')){
+      if (top(sec) <= after) continue;
+      if (sec.classList.contains('words')){ $$('.row', sec).forEach((r, i) => s.push(i ? centre(r) : Math.min(centre(r), top(sec) - 24))); continue; }   // the first stop keeps the heading in view
+      if (sec.offsetHeight <= H() * 1.15){ s.push(centre(sec)); continue; }
+      for (let y = top(sec); y < top(sec) + sec.offsetHeight - H(); y += H() * .8) s.push(y);
+    }
+    s.push(maxY());
+    return s.map(y => Math.round(Math.min(maxY(), Math.max(0, y)))).sort((a, b) => a - b).filter((y, i, a) => !i || y - a[i - 1] > 60);
+  }
+  let busy = false, lastWheel = 0;
+  addEventListener('wheel', e => {
+    if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY) || innerWidth < 1000) return;   // pinch-zoom, sideways, narrow windows: leave alone
+    e.preventDefault(); e.stopImmediatePropagation();
+    const now = performance.now(), quiet = now - lastWheel > 180; lastWheel = now;
+    if (busy || !quiet || Math.abs(e.deltaY) < 2) return;
+    const y = lenis ? lenis.scroll : scrollY, S = stops(), dir = Math.sign(e.deltaY);
+    const to = dir > 0 ? S.find(v => v > y + 8) : [...S].reverse().find(v => v < y - 8);
+    if (to === undefined) return;
+    busy = true;
+    const done = () => { busy = false; };
+    if (lenis) lenis.scrollTo(to, {duration: 1.05, lock: true, force: true, onComplete: done});
+    else { scrollTo({top: to, behavior: REDUCED ? 'auto' : 'smooth'}); setTimeout(done, REDUCED ? 50 : 900); }
+  }, {passive: false, capture: true});
+}
+
 $$('a[href^="#"]').forEach(a => a.addEventListener('click', e => {
   const id = a.getAttribute('href'); if (id.length < 2) return; const el = $(id); if (!el) return;
   e.preventDefault(); lenis ? lenis.scrollTo(el, {offset: -70}) : el.scrollIntoView({behavior: 'smooth'});

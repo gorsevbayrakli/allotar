@@ -35,7 +35,6 @@ img,video{max-width:100%;display:block}
 main,footer{position:relative;z-index:1}
 
 /* drifting colour orbs behind the page */
-.pagebg{position:fixed;inset:0;z-index:0;pointer-events:none}
 .orbs{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
 .orbs i{position:absolute;width:52vmax;height:52vmax;border-radius:50%;filter:blur(70px);opacity:.55;transition:opacity 1.2s,background 1.2s;will-change:transform}
 .orbs i:nth-child(1){left:52%;top:-18%;background:radial-gradient(circle,rgba(154,143,214,.9),rgba(154,143,214,0) 65%)}
