@@ -69,12 +69,12 @@ const route = (a, m, b) => new THREE.CatmullRomCurve3([xz(a[0], a[1]), xz(m[0], 
 const FWD = [route(W1, [-1.5, -6.7], F1), route(F1, [.5, -6.1], F2), route(F2, [2.6, -6.2], F3), route(F3, [4.7, -7.6], W2)];
 const BACK = [route(W2, [4.9, -10.5], R1), route(R1, [1.6, -11.8], R2), route(R2, [-1.8, -10.2], W1)];
 const LOOP = 31, FADE_AT = 28.8;
-const BF = 89, FILM = 5.93;   // protein: Allotar's Nurr1 film (transparent master, every second frame), a seamless 5.9 s loop
+const BF = 129, FILM = 8.6;   // protein: Allotar's Nurr1 film, longer cut (129 frames, every second frame of the 258-frame master), a seamless 8.6 s loop
 // the lights follow the film: the film plays at 3/4 speed after a short rest on the open state. While the protein is
 // open the open well fills; as it closes the lights travel to the other well; while it stays closed that well fills;
 // as it opens again they travel back, and they clear during the next rest. (Film phases measured from its silhouette:
-// closing until 22 %, closed until 79 %, then opening.)
-const SPEED = .75, HOLD = 1.6, FD = FILM / SPEED, CYCLE = HOLD + FD, CLOSED = .22, OPENS = .79;
+// closing until 30 %, closed until 72 %, then opening; measured on the 129-frame cut.)
+const SPEED = .75, HOLD = 1.6, FD = FILM / SPEED, CYCLE = HOLD + FD, CLOSED = .30, OPENS = .72;
 function filmCycle(c){
   if (c < HOLD) return {f: 0, u: c < .5 ? FADE_AT + c / .5 * (LOOP - FADE_AT) : (c - .5) / (HOLD - .5) * 4.5};
   const ph = (c - HOLD) / FD;
@@ -82,12 +82,12 @@ function filmCycle(c){
   return {f: ph * BF, u};
 }
 // every sample: where it appears, when, and whether it belongs to the forward or the backward transition
-function buildSamples(){
+function buildSamples(K = 1){   // K thins every group (the protein hero, where the lights keep pace with the film, uses fewer)
   const r = rng(21), S = [];
-  const well = (w, n, t0, t1, k, back = false) => { for (let i = 0; i < n; i++){ const a = r() * 6.283, d = Math.sqrt(r()) * w[3] * k;
+  const well = (w, n0, t0, t1, k, back = false) => { const n = Math.max(3, Math.round(n0 * K)); for (let i = 0; i < n; i++){ const a = r() * 6.283, d = Math.sqrt(r()) * w[3] * k;
     S.push({x: w[0] + Math.cos(a) * d, z: w[1] + Math.sin(a) * d, t: t0 + (t1 - t0) * (i + r() * .6) / n, back}); } };
   // path samples scatter to either side of the route and appear in loose order, not as a line
-  const path = (c, n, t0, t1, back = false) => { for (let i = 0; i < n; i++){ const s = clamp((i + .5 + (r() - .5) * 1.6) / n), p = c.getPoint(s), q = c.getTangent(s), o = (r() + r() + r() - 1.5) * .75;
+  const path = (c, n0, t0, t1, back = false) => { const n = Math.max(3, Math.round(n0 * K)); for (let i = 0; i < n; i++){ const s = clamp((i + .5 + (r() - .5) * 1.6) / n), p = c.getPoint(s), q = c.getTangent(s), o = (r() + r() + r() - 1.5) * .75;
     S.push({x: p.x - q.z * o, z: p.z + q.x * o, t: t0 + (t1 - t0) * clamp(s + (r() - .5) * .3), back}); } };
   well(W1, 60, .3, 4.5, .55);          // the deepest well fills first
   // forward along the minimum path, partly filling each local minimum before moving on
@@ -120,7 +120,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
   const land = makeLandscape(light); scene.add(land);
 
   // lights
-  const SAMPLES = buildSamples(), lights = makePoints(SAMPLES.length, S.glow); scene.add(lights.points);
+  const SAMPLES = buildSamples(mode === 'protein' ? .6 : 1), lights = makePoints(SAMPLES.length, S.glow); scene.add(lights.points);
   const C_FWD = light ? rgb('#e9783f') : hdr('#ffd38a', 2.6), C_BACK = light ? rgb('#3d6fd6') : hdr('#6fb4ff', 2.8);
 
   // dust
