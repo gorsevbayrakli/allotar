@@ -62,45 +62,6 @@ if (window.Lenis && !REDUCED){
   lenis = new Lenis({lerp: .14, smoothWheel: true});   // light smoothing: the page follows the wheel closely instead of gliding behind it
   const raf = t => { lenis.raf(t); requestAnimationFrame(raf); }; requestAnimationFrame(raf);
 }
-// ---------- home, desktop mouse: one wheel step = one screen ----------
-// The page moves between fixed stops: the hero, the statement, each story panel, then each block below (each approach
-// row on its own). A wheel step (or one trackpad swipe) glides to the next stop; further wheel events are swallowed
-// until the glide has finished and the wheel has been still for a moment, so one gesture never skips two screens.
-if (document.body.dataset.page === 'home' && matchMedia('(hover: hover) and (pointer: fine)').matches){
-  const H = () => innerHeight, maxY = () => document.documentElement.scrollHeight - innerHeight;
-  const top = el => el.getBoundingClientRect().top + scrollY;
-  const centre = el => top(el) + el.offsetHeight / 2 - H() / 2;
-  function stops(){
-    const s = [0];
-    const st = $('.statement'); if (st && st.offsetHeight > H()) s.push(top(st) + .65 * (st.offsetHeight - H()));
-    const story = $('[data-story]');
-    if (story){ const n = $$('.panel', story).length || 4, run = story.offsetHeight - H(); for (let i = 0; i < n; i++) s.push(top(story) + (i + .5) / n * run); }
-    const after = story ? top(story) + story.offsetHeight - H() : 0;
-    for (const sec of $$('main > section, footer')){
-      if (top(sec) <= after) continue;
-      if (sec.classList.contains('words')){ $$('.row', sec).forEach((r, i) => s.push(i ? centre(r) : Math.min(centre(r), top(sec) - 24))); continue; }   // the first stop keeps the heading in view
-      if (sec.offsetHeight <= H() * 1.15){ s.push(centre(sec)); continue; }
-      for (let y = top(sec); y < top(sec) + sec.offsetHeight - H(); y += H() * .8) s.push(y);
-    }
-    s.push(maxY());
-    return s.map(y => Math.round(Math.min(maxY(), Math.max(0, y)))).sort((a, b) => a - b).filter((y, i, a) => !i || y - a[i - 1] > 60);
-  }
-  let busy = false, lastWheel = 0;
-  addEventListener('wheel', e => {
-    if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY) || innerWidth < 1000) return;   // pinch-zoom, sideways, narrow windows: leave alone
-    e.preventDefault(); e.stopImmediatePropagation();
-    const now = performance.now(), quiet = now - lastWheel > 180; lastWheel = now;
-    if (busy || !quiet || Math.abs(e.deltaY) < 2) return;
-    const y = lenis ? lenis.scroll : scrollY, S = stops(), dir = Math.sign(e.deltaY);
-    const to = dir > 0 ? S.find(v => v > y + 8) : [...S].reverse().find(v => v < y - 8);
-    if (to === undefined) return;
-    busy = true;
-    const done = () => { busy = false; };
-    if (lenis) lenis.scrollTo(to, {duration: 1.05, lock: true, force: true, onComplete: done});
-    else { scrollTo({top: to, behavior: REDUCED ? 'auto' : 'smooth'}); setTimeout(done, REDUCED ? 50 : 900); }
-  }, {passive: false, capture: true});
-}
-
 $$('a[href^="#"]').forEach(a => a.addEventListener('click', e => {
   const id = a.getAttribute('href'); if (id.length < 2) return; const el = $(id); if (!el) return;
   e.preventDefault(); lenis ? lenis.scrollTo(el, {offset: -70}) : el.scrollIntoView({behavior: 'smooth'});
