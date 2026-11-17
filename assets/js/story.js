@@ -57,7 +57,7 @@ export function initStory(canvas){
     mx += (tmx - mx) * k;
     // phones: the text panels sit at the bottom, so the protein (and the map) fill the band between the nav and
     // the panel on screen
-    let tcy = H / 2, tbh = Math.min(H * .62, W * .36);
+    let tcy = H / 2, tbh = Math.min(H * .53, W * .31);
     const on = panels.find(el => el.classList.contains('on')) || panels[0];
     if (narrow){
       const top = 88, bot = on.offsetTop - 24;   // offsetTop ignores the panel's slide-in transform
