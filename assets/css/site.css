@@ -247,12 +247,15 @@ section{position:relative}
 .pubs[open] .act svg{transform:rotate(45deg)}
 .pubs .act .hide,.pubs[open] .act .show{display:none}
 .pubs[open] .act .hide{display:inline}
-.pubs[open] summary{border-radius:20px 20px 0 0}
-.pubs[open] ul{margin-top:8px}
-@media (max-width:560px){.pubs summary{padding:16px 16px 16px 24px}.pubs .ttl .n{display:block;margin:4px 0 0}.pubs .act .show,.pubs .act .hide{display:none!important}}
-.pubs ul{list-style:none;border-top:1px solid var(--line)}
-.pubs a{display:grid;grid-template-columns:1fr minmax(160px,.42fr) 56px 18px;gap:24px;align-items:baseline;padding:24px 0;border-bottom:1px solid var(--line);transition:padding .4s,color .3s}
-.pubs a:hover{padding-left:12px}
+.pubs[open] summary{border-radius:20px 20px 0 0;border-bottom-color:var(--line)}
+/* the open list continues the card: rows start where the title starts, and the arrow column sits under the round button */
+.pubs[open] ul{border:1px solid var(--line2);border-top:0;border-radius:0 0 20px 20px;background:rgba(255,255,255,.55);padding:0 32px}
+.pubs a > svg{justify-self:center;align-self:start!important;margin-top:4px}   /* level with the first line of the title */
+@media (max-width:560px){.pubs summary{padding:16px 16px 16px 24px}.pubs[open] ul{padding:0 16px 0 24px}.pubs .ttl .n{display:block;margin:4px 0 0}.pubs .act .show,.pubs .act .hide{display:none!important}}
+.pubs ul{list-style:none}
+.pubs a{display:grid;grid-template-columns:1fr minmax(160px,.42fr) 56px 40px;gap:24px;align-items:baseline;padding:24px 0;border-bottom:1px solid var(--line);transition:padding .4s,color .3s}
+.pubs a:hover .t{transform:translateX(6px)}
+.pubs .t{transition:transform .4s,color .3s}
 .pubs .t{font-size:17px;font-weight:600;color:var(--ink);line-height:1.35}
 .pubs a:hover .t{color:var(--accent)}
 .pubs .j{font-size:14.5px;font-style:italic;color:var(--soft)}
@@ -510,7 +513,7 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   .split.rev > :first-child{order:0}
   .steps,.grid2,.program{grid-template-columns:1fr}
   .news article{grid-template-columns:1fr;gap:12px}
-  .pubs a{grid-template-columns:1fr 18px;gap:8px 16px}
+  .pubs a{grid-template-columns:1fr 40px;gap:8px 16px}
   .pubs .t{grid-column:1} .pubs svg{grid-column:2;grid-row:1}
   .pubs .j,.pubs .y{grid-column:1;text-align:left}
   .pubs .y{margin-top:-4px}
