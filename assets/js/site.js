@@ -224,3 +224,6 @@ $$('iframe[data-src]').forEach(f => new IntersectionObserver((en, o) => { if (en
 // looping videos play only while on screen, so off-screen ones don't keep decoding during scroll
 const vio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting){ if (!REDUCED) e.target.play().catch(() => {}); } else e.target.pause(); }), {rootMargin: '200px 0px'});
 $$('video[autoplay]').forEach(v => { v.autoplay = false; v.pause(); vio.observe(v); });
+
+// arriving from "Explore the publications" (team page) or a direct link: open the publication list
+{ const pub = $('#publications'); if (pub && ['#science', '#publications'].includes(location.hash)) pub.open = true; }
