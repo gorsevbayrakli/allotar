@@ -571,4 +571,4 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
 .cta-band .btn:not(.solid){background:rgba(10,16,48,.78);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .form-note a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 .grecaptcha-badge{visibility:hidden}   /* the notice under the form replaces Google's floating badge, as Google allows */
-.stats .big:has(.pre){white-space:nowrap} .stats .big .pre{font-size:.38em;letter-spacing:0}   /* "over" sits small before the number, so it stays on one line */
+.stats .big:has(.pre){white-space:nowrap} .stats .big .pre{font-size:clamp(16px,1.7vw,26px);letter-spacing:0}   /* "over" sits small before the number, so it stays on one line */
