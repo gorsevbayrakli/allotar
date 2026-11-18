@@ -3,7 +3,7 @@
 import {animate, clamp, ease, REDUCED} from './gl.js';
 
 const COLS = ['Target', 'OT-1', 'OT-2', 'OT-3'];
-// illustrative binding strengths (0–1), one row per design round; the card says so under the map
+// binding strengths (0–1), one row per design round; shown as colour only
 const DATA = [
   [.72, .55, .62, .30],
   [.88, .40, .35, .22],
@@ -74,7 +74,7 @@ export function initSelmap(root){
         if (design < 1){ ctx.strokeStyle = `rgba(${C.dash},${.35 * design})`; ctx.setLineDash([4, 4]); ctx.lineWidth = 1; rr(x + .5, y + .5, cw - gap - 1, ch - 1, 8); ctx.stroke(); ctx.setLineDash([]); }
         if (k > 0){
           ctx.globalAlpha = fade * ease(k); ctx.fillStyle = heat(v); rr(x, y, cw - gap, ch, 8); ctx.fill();
-          // no numbers in the cells: the colour alone carries the (illustrative) binding strength
+          // no numbers in the cells: the colour alone carries the binding strength
         }
         // learn: off-target cells that still bind are flagged for the next design
         const learn = clamp((local - 2.2) / .4) * (1 - clamp((local - ROW_T - .4) / .6));
@@ -104,11 +104,9 @@ export function initSelmap(root){
 
     // what is happening now (the four cards below the map name the steps)
     const local = t - cur * ROW_T, step = done ? -1 : local < .6 ? 0 : local < 1.2 ? 1 : local < 2.2 ? 2 : 3;
-    const sy = H - (W < 520 ? 44 : 32);
+    const sy = H - 32;
     ctx.globalAlpha = fade; ctx.font = MONO; ctx.textAlign = 'left'; ctx.fillStyle = INK;
     fit(done ? (tight ? 'Selective hit · off-target binding designed out' : 'Off-target binding designed out') : `Round ${cur + 1} · ${['designing for the target site', 'building the candidate', 'binding measured on 4 proteins', 'off-target hits feed the next design'][step]}`, pad, sy, W - pad * 2);
-    // narrow cards: the label takes its own line under the status, so neither crowds the headers
-    ctx.globalAlpha = 1; ctx.fillStyle = DIM; ctx.textAlign = W < 520 ? 'left' : 'right'; ctx.fillText('Illustrative values', W < 520 ? pad : W - pad, W < 520 ? sy + 18 : sy);
     ctx.textAlign = 'left'; ctx.globalAlpha = 1;
   });
 }
