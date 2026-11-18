@@ -1,0 +1,20 @@
+# Allotar Therapeutics
+
+> Allotar Therapeutics turns protein dynamics into selective, validated therapeutic opportunities. Its AllotarX™ platform combines physics-based simulation, interpretable AI and closed-loop experimental validation to find and drug allosteric sites, including transient pockets that static structures do not show. Based in Pittsburgh, PA and Austin, TX.
+
+Allotar Therapeutics, Inc. is a precision allosteric drug discovery company, not to be confused with other companies with similar names.
+
+## Platform
+- [AllotarX™ platform](https://allotar.com/platform.html): dynamics sampling with over 1000× less compute than established enhanced-sampling workflows such as replica-exchange umbrella sampling applied to the same protein; allosteric site identification with ~90% benchmarked accuracy; site-specific design of small molecules, macrocyclic peptides and computationally designed scaffolds; closed-loop design, build, test and learn cycles with partner laboratories.
+- [Publications](https://allotar.com/platform.html#publications): peer-reviewed methods by the co-founders (100+ publications, 5,000+ citations), including ClustENM, ClustENMD, ESSA and allosteric pocket prediction.
+
+## Programs
+- [Programs](https://allotar.com/programs.html): Alzheimer's disease (selective allosteric modulation of APH1B-containing γ-secretase, supported by an NIH SBIR Phase I grant) and GLP-1 receptor in neurodegeneration (CNS-targeted allosteric modulation); expanding into oncology and pain.
+- [NIH RePORTER grant 1R43AG102306-01](https://reporter.nih.gov/project-details/11409147): Selective APH1B Modulators as a Novel Therapeutic Strategy for Alzheimer's Disease.
+
+## Team
+- [Team](https://allotar.com/team.html): Pemra Doruker, PhD (Co-founder, CEO); Fidan Sumbul, PhD (Co-founder, COO & CSO); Yenel Yildirim (CTO).
+
+## Contact
+- [Contact & Partnerships](https://allotar.com/contact.html): contact@allotar.com
+- [LinkedIn](https://www.linkedin.com/company/allotar-therapeutics/)

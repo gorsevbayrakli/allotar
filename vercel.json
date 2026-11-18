@@ -1,0 +1,16 @@
+{
+  "redirects": [
+    {"source": "/platform-overview", "destination": "/platform.html", "permanent": true},
+    {"source": "/platform", "destination": "/platform.html", "permanent": true},
+    {"source": "/programs", "destination": "/programs.html", "permanent": true},
+    {"source": "/pipeline", "destination": "/programs.html", "permanent": true},
+    {"source": "/team", "destination": "/team.html", "permanent": true},
+    {"source": "/about", "destination": "/team.html", "permanent": true},
+    {"source": "/contact", "destination": "/contact.html", "permanent": true},
+    {"source": "/privacy-policy", "destination": "/privacy.html", "permanent": true},
+    {"source": "/privacy", "destination": "/privacy.html", "permanent": true},
+    {"source": "/terms-of-service", "destination": "/terms.html", "permanent": true},
+    {"source": "/terms", "destination": "/terms.html", "permanent": true},
+    {"source": "/index.html", "destination": "/", "permanent": true}
+  ]
+}
