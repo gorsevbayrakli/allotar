@@ -172,6 +172,8 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
   animate(canvas, (dt, t) => {
     mx += (tmx - mx) * Math.min(1, dt * 2); my += (tmy - my) * Math.min(1, dt * 2);
     const p = scrollP, narrow = S.w < 1000;
+    // phones and tablets view the landscape from further back, so the lights are drawn larger and brighter there
+    const LS = narrow ? 1.6 : 1, LA = narrow ? 1.8 : 1;
     land.material.uniforms.uT.value = t;
 
     // lights: each sample fades in where it is found and stays until the loop fades out
@@ -186,7 +188,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
         if (tau < L.t) continue;
         const k = ease(prog(tau, L.t, .04)), flash = Math.sin(Math.PI * prog(tau, L.t, .04)), dim = 1 - .7 * ease(prog(tau, L.dim, .07));
         const x = L.x + .03 * Math.sin(t * 2.3 + L.ph), z = L.z + .03 * Math.cos(t * 2 + L.ph);
-        lights.push(x, surfY(x, z, t) + .08, z, L.back ? C_BACK : C_FWD, (.85 * k + .5 * flash) * dim * out, L.s * (.4 + .6 * k + .5 * flash) * (.75 + .25 * dim));
+        lights.push(x, surfY(x, z, t) + .08, z, L.back ? C_BACK : C_FWD, (.85 * k + .5 * flash) * dim * out * LA, L.s * LS * (.4 + .6 * k + .5 * flash) * (.75 + .25 * dim));
       }
     }
     // the protein hero waits for its film, so its lights start once, in step with it, instead of running a loop of
@@ -195,7 +197,7 @@ export async function initHero(canvas, {mode = 'protein', light = false} = {}){
     for (const L of own ? SAMPLES : []){
       if (u < L.t) continue;
       const k = ease(prog(u, L.t, .6)), flash = Math.sin(Math.PI * prog(u, L.t, .6)), x = L.x + .03 * Math.sin(t * 2.3 + L.ph), z = L.z + .03 * Math.cos(t * 2 + L.ph);
-      lights.push(x, surfY(x, z, t) + .08, z, L.back ? C_BACK : C_FWD, (.85 * k + .5 * flash) * out, L.s * (.4 + .6 * k + .5 * flash));
+      lights.push(x, surfY(x, z, t) + .08, z, L.back ? C_BACK : C_FWD, (.85 * k + .5 * flash) * out * LA, L.s * LS * (.4 + .6 * k + .5 * flash));
     }
     lights.flush();
 
