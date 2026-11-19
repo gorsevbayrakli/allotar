@@ -1,6 +1,6 @@
 # Allotar Therapeutics
 
-> Allotar Therapeutics turns protein dynamics into selective, validated therapeutic opportunities. Its AllotarX™ platform combines physics-based simulation, interpretable AI and closed-loop experimental validation to find and drug allosteric sites, including transient pockets that static structures do not show. Based in Pittsburgh, PA and Austin, TX.
+> Allotar Therapeutics translates protein dynamics into selective, validated therapeutic opportunities. Its AllotarX™ platform combines physics-based simulation, interpretable AI and closed-loop experimental validation to find and drug allosteric sites, including transient pockets that static structures do not show. Based in Pittsburgh, PA and Austin, TX.
 
 Allotar Therapeutics, Inc. is a precision allosteric drug discovery company, not to be confused with other companies with similar names.
 
