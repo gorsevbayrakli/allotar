@@ -529,7 +529,7 @@ footer{padding:88px 0 40px;background:radial-gradient(70% 90% at 15% 110%,rgba(9
   .stages{grid-template-columns:repeat(4,minmax(90px,1fr));overflow-x:auto}
   form .fields{grid-template-columns:1fr}
   .hero::before{background:linear-gradient(180deg,rgba(255,255,255,0) 20%,rgba(255,255,255,.8) 55%,rgba(255,255,255,.92) 75%)}
-  .statement .huge{white-space:normal;text-align:center} .statement .huge span + span{transform:translate3d(calc(var(--x,0px) * -1),0,0)}
+  .statement .huge{white-space:normal;text-align:center} .statement .huge span{padding:0 16px} .statement .huge span + span{transform:translate3d(calc(var(--x,0px) * -1),0,0)}
   .story .panel{width:auto;left:var(--gut)!important;right:var(--gut)!important;top:auto;bottom:88px;transform:translateY(20px)}
   .story .panel.on{transform:none}
   .story .selmap{left:50%;aspect-ratio:auto;transform:translate(-50%,12px)}
